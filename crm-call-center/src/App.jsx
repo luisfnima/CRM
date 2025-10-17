@@ -9,7 +9,7 @@ import viteLogo from '/vite.svg'
 import './App.css'
 
 //Layout
-import MainLayout from './components/layout/MainLayout';
+import MainLayout from './components/layout/MainLayout'
 import LoginPage from './pages/auth/LoginPage';
 //Mi Empresa
 import DashboardMain from './pages/empresa/DashboardMain';
