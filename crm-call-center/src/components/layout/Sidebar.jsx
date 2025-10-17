@@ -5,7 +5,6 @@ import {
     Shield,
     Settings,
     TrendingUp,
-    UsersRound,
     UserPlus,
     UsersRound,
     Megaphone,
