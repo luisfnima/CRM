@@ -1,9 +1,7 @@
-import { useState } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { useAuthStore } from './store/authStore'; 
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
+
 
 //styles
 import './App.css'
@@ -12,10 +10,10 @@ import './App.css'
 import MainLayout from './components/layout/MainLayout'
 import LoginPage from './pages/auth/LoginPage';
 //Mi Empresa
-import DashboardMain from './pages/empresa/DashboardMain';
-import UserPage from './pages/empresa/UsersPage';
-import RolePage from './pages/empresa/RolePage' ;
-import ConfigPage from './pages/empresa/ConfigPage';
+import DashboardMain from './pages/company/DashboardMain';
+import UserPage from './pages/company/UsersPage';
+import RolePage from './pages/company/RolePage' ;
+import ConfigPage from './pages/company/ConfigPage';
 //Ventas
 import DashboardSales from './pages/sales/DashboardSales';
 import LeadsPage from './pages/sales/LeadsPage'

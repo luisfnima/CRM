@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Building2, Mail, Lock, Eye, EyeOff } from "lucide-react";
-import { authStore } from '../../store/authStore';
+import { useAuthStore } from '../../store/authStore';
 import toast from 'react-hot-toast';
 
 const LoginPage = () => {
@@ -22,7 +22,7 @@ const LoginPage = () => {
         setTimeout(() => {
             const mockUser = {
                 id: 1,
-                name: 'Noe Xiste',
+                name: 'Juan Pablo',
                 email: email,
                 role: 'Administrador',
                 company: 'DreamTeam'

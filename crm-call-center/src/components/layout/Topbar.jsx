@@ -5,7 +5,7 @@ import {
     Search,
     Bell,
     User,
-    Logout,
+    LogOut,
     Settings,
     ChevronDown
 } from 'lucide-react';

@@ -119,7 +119,6 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
         </>
     )
 
-
-
-
 }
+
+export default Sidebar
