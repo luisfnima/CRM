@@ -24,7 +24,7 @@ const Topbar = ({ toggleSidebar }) => {
     }
 
     return (
-        <header className="bg-whitebar border-b border-gray-200 h-16" >
+        <header className="bg-white border-b border-gray-200 h-16" >
             <div className="flex items-center justify-between h-full px-4">
                 {/** izq */}
                 <div className="flex items-center space-x-4 flex-1">
@@ -58,7 +58,7 @@ const Topbar = ({ toggleSidebar }) => {
                     <div className="relative">
                         <button
                             onClick={() => setDropdownOpen(!dropdownOpen)}
-                            className="flex item-center space-x-3 p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                            className="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-100 transition-colors"
                         >
                             <div className="w-8 h-8 rounded-full bg-red-600 flex items-center justifiy-center">
                                 <span className="text-sm font-medium text-white">
