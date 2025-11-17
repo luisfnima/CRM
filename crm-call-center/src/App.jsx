@@ -2,7 +2,6 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { Toaster } from 'react-hot-toast';
 import { useAuthStore } from './store/authStore'; 
 
-
 //styles
 import './App.css'
 
@@ -12,7 +11,7 @@ import LoginPage from './pages/auth/LoginPage';
 //Mi Empresa
 import DashboardMain from './pages/company/DashboardMain';
 import UserPage from './pages/company/UsersPage';
-import RolePage from './pages/company/RolePage' ;
+import RolePage from './pages/company/RolePage';
 import ConfigPage from './pages/company/ConfigPage';
 //Ventas
 import DashboardSales from './pages/sales/DashboardSales';
@@ -25,23 +24,21 @@ const ProtectedRoute = ({ children }) => {
   const { isAuthenticated } = useAuthStore();
 
   if (!isAuthenticated) {
-    return <Navigate to = "/login" replace />;
+    return <Navigate to="/login" replace />;
   }
 
   return children;
-
 }
 
-function App(){
+function App() {
   return (
     <Router>
       <Toaster position="top-right" />
       <Routes>
+        {/* Ruta pública */}
+        <Route path="/login" element={<LoginPage />} />
 
-        { /*ruta publica -> imagino que es como una landing page*/}
-        <Route path = "/login" element={<LoginPage />} />
-
-        {/*rutas protegidas -> solo se puede acceder luego de login*/}
+        {/* Rutas protegidas - TODAS dentro de MainLayout */}
         <Route
           path="/"
           element={
@@ -49,12 +46,11 @@ function App(){
               <MainLayout />
             </ProtectedRoute>
           }
-        ></Route>
-
-          {/* ruta default -> redirigir al dashboard  */}
+        >
+          {/* Redirect a dashboard por defecto */}
           <Route index element={<Navigate to="/empresa/dashboard" replace />} />
 
-          {/*Mi empresa */}
+          {/* Mi empresa */}
           <Route path="empresa">
             <Route path="dashboard" element={<DashboardMain />} />
             <Route path="user" element={<UserPage />} />
@@ -69,10 +65,10 @@ function App(){
             <Route path="campaigns" element={<CampaignsPage />} />
             <Route path="calls" element={<CallsPage />} />
           </Route>
+        </Route>
 
-          {/* Mi fav -> 404 */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-
+        {/* 404 */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>
   );
