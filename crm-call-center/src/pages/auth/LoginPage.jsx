@@ -11,7 +11,7 @@ const LoginPage = () => {
     const [loading, setLoading] = useState(false)
 
     const { login } = useAuthStore()
-    const navigate = usenavigate()
+    const navigate = useNavigate()
 
     const handleSubmit = async (e) => {
         e.preventDefault()
