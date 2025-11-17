@@ -20,8 +20,8 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
             section: 'Mi Empresa',
             items: [
                 { name: 'Dashboard', icon: LayoutDashboard, path: '/empresa/dashboard' },
-                { name: 'Users', icon: Users, path: '/empresa/users' },
-                { name: 'Roles', icon: Shield, path: '/empresa/roles' },
+                { name: 'Users', icon: Users, path: '/empresa/user' },
+                { name: 'Roles', icon: Shield, path: '/empresa/role' },
                 { name: 'Config', icon: Settings, path: '/empresa/config' },
             ]
         },

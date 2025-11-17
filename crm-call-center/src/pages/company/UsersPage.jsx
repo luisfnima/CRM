@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { Plus, Search, MoreVertical, Pencil, Trash2, UserCheck, UserX} from 'lucide-react'
+import { Plus, Search, Pencil, Trash2, UserCheck, UserX } from 'lucide-react'
 import toast from 'react-hot-toast';
 
 const UsersPage = () => {
-    const [searchTerm, setsearchTerm] = useState('')
+    const [searchTerm, setSearchTerm] = useState('')
     const [users, setUsers] = useState([
         {
             id: 1,
@@ -29,19 +29,19 @@ const UsersPage = () => {
             email: 'sperez@dreamteam.pe',
             role: 'Agentes Covida',
             phone: '999 999 777',
-            status: 'Inctivo',
+            status: 'Inactivo',
             lastSession: '2025-10-14 12:58'
         },
     ])
 
     const filteredUsers = users.filter(user => 
-        user.name.toLocaleLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.email.toLocaleLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
         user.role.toLowerCase().includes(searchTerm.toLowerCase())
     )
 
     const handleDelete = (id) => {
-        if(confirm('Estas seguro de querer eliminar al usuario?')){
+        if(window.confirm('¿Estás seguro de querer eliminar al usuario?')){
             setUsers(users.filter(u => u.id !== id))
             toast.success('Usuario eliminado correctamente')
         }
@@ -52,7 +52,6 @@ const UsersPage = () => {
             u.id === id
             ? { ...u, status: u.status === 'Activo' ? 'Inactivo' : 'Activo' } : u 
         ))
-
         toast.success('Estado actualizado')
     }
 
@@ -118,55 +117,55 @@ const UsersPage = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {filteredUsuarios.map((usuario) => (
-                <tr key={usuario.id} className="hover:bg-gray-50 transition-colors">
+              {filteredUsers.map((user) => (
+                <tr key={user.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
                         <span className="text-blue-700 font-medium">
-                          {usuario.nombre.charAt(0)}
+                          {user.name.charAt(0)}
                         </span>
                       </div>
                       <div className="ml-4">
                         <div className="text-sm font-medium text-gray-900">
-                          {usuario.nombre}
+                          {user.name}
                         </div>
                         <div className="text-sm text-gray-500">
-                          {usuario.email}
+                          {user.email}
                         </div>
                       </div>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="px-2 py-1 text-xs font-medium rounded-full bg-purple-100 text-purple-700">
-                      {usuario.rol}
+                      {user.role}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {usuario.telefono}
+                    {user.phone}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span 
                       className={`px-2 py-1 text-xs font-medium rounded-full ${
-                        usuario.estado === 'Activo'
+                        user.status === 'Activo'
                           ? 'bg-green-100 text-green-700'
                           : 'bg-red-100 text-red-700'
                       }`}
                     >
-                      {usuario.estado}
+                      {user.status}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {usuario.ultimoAcceso}
+                    {user.lastSession}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <div className="flex items-center justify-end space-x-2">
                       <button
-                        onClick={() => toggleEstado(usuario.id)}
+                        onClick={() => toggleStatus(user.id)}
                         className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
-                        title={usuario.estado === 'Activo' ? 'Desactivar' : 'Activar'}
+                        title={user.status === 'Activo' ? 'Desactivar' : 'Activar'}
                       >
-                        {usuario.estado === 'Activo' ? (
+                        {user.status === 'Activo' ? (
                           <UserX className="w-4 h-4 text-orange-600" />
                         ) : (
                           <UserCheck className="w-4 h-4 text-green-600" />
@@ -176,7 +175,7 @@ const UsersPage = () => {
                         <Pencil className="w-4 h-4 text-blue-600" />
                       </button>
                       <button
-                        onClick={() => handleDelete(usuario.id)}
+                        onClick={() => handleDelete(user.id)}
                         className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
                       >
                         <Trash2 className="w-4 h-4 text-red-600" />
@@ -190,7 +189,7 @@ const UsersPage = () => {
         </div>
 
         {/* Empty state */}
-        {filteredUsuarios.length === 0 && (
+        {filteredUsers.length === 0 && (
           <div className="text-center py-12">
             <p className="text-gray-500">No se encontraron usuarios</p>
           </div>
@@ -200,17 +199,16 @@ const UsersPage = () => {
       {/* Stats footer */}
       <div className="mt-4 flex items-center justify-between text-sm text-gray-600">
         <span>
-          Mostrando {filteredUsuarios.length} de {usuarios.length} usuarios
+          Mostrando {filteredUsers.length} de {users.length} usuarios
         </span>
         <div className="flex items-center space-x-2">
-          <span>Activos: {usuarios.filter(u => u.estado === 'Activo').length}</span>
+          <span>Activos: {users.filter(u => u.status === 'Activo').length}</span>
           <span>•</span>
-          <span>Inactivos: {usuarios.filter(u => u.estado === 'Inactivo').length}</span>
+          <span>Inactivos: {users.filter(u => u.status === 'Inactivo').length}</span>
         </div>
       </div>
     </div>
   );
-
 }
 
 export default UsersPage;
