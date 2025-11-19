@@ -1,28 +1,100 @@
+import { useState } from 'react'
 import { NavLink } from "react-router-dom";
 import {
     LayoutDashboard,
     Users,
     Shield,
     Settings,
-    TrendingUp,
-    UserPlus,
-    UsersRound,
-    Megaphone,
-    Phone,
     Building2,
     ChevronLeft,
-    ChevronRight
+    ChevronRight,
+    ChevronDown,
+    ChevronUp,
+    Clock,
+    WiFi,
+    MapPin,
+    UserCog,
+    Megaphone,
+    MessageSquare,
+    FileText,
+    LogIn,
+    Activity,
+    UserSearch,
+    Navigation,
+    MessageCircle,
+    TrendingUp,
+    Phone,
+    Headphones,
+    Radio,
+    Eye,
+    Settings as SettingsIcon,
+    Layers,
+    Grid,
+    Tag,
+    Package,
+    Percent,
+    Users as UsersIcon,
+    Target,
+    List,
+    Ban,
+    CheckSquare,
+    BarChart,
+    Award,
+    Calendar,
+    Briefcase,
+    PhoneCall,
+    Mic,
+    Search,
+    Clock3,
+    Database,
+    Download,
+    PieChart
 } from 'lucide-react'
 
 const Sidebar = ({ isOpen, setIsOpen }) => {
     const menuItems = [
         {
             section: 'Mi Empresa',
+            key: 'company',
             items: [
-                { name: 'Dashboard', icon: LayoutDashboard, path: '/empresa/dashboard' },
-                { name: 'Users', icon: Users, path: '/empresa/user' },
-                { name: 'Roles', icon: Shield, path: '/empresa/role' },
-                { name: 'Config', icon: Settings, path: '/empresa/config' },
+                { name: 'Inicio', icon: LayoutDashboard, path: '/company/start' },
+                { name: 'Config de Empresa', icon: Building2, path: '/company/company-config' },
+                {
+                    name: 'Config. de Asistencia',
+                    icon: Clock,
+                    subItems: [
+                        { name: 'Horarios', icon: LayoutDashboard, path: '/company/attendance/schedules'},
+                        { name: 'Tipos de Conexion', icon: 'Wifi', path: '/company/attendance/disconection-types'},
+                        { name: 'Sede', icon: MapPin, path: '/company/attendance/branches' }
+                    ]
+                },
+                {
+                    name: 'Administracion de Usuarios',
+                    icon: Users,
+                    subItems: [
+                        { name: 'Usuarios', icon: Users, path: '/company/users'},
+                        { name: 'Grupos de Usuarios', icon: UserCog, pah: '/company/groups' }
+                    ]
+                },
+                {
+                    name: 'Colaborativo',
+                    icon: Megaphone,
+                    subItems: [
+                        { name: 'Anuncios', icon: Megaphone, path: '/company/collab/announcements' },
+                        { name: 'Popups de Bienvenida', icon: MessageSquare, path: '/company/collab/popups'}
+                    ]
+                },
+                {
+                    name: 'Reportes',
+                    icon: FileText,
+                    subitems: [
+                        { name: 'Asistencia', icon: Clock, path: '/company/reports/attendance'},
+                        { name: 'Acceso al Sistema', icon: LogIn, path: '/company/reports/access'},
+                        { name: 'Movimientos por Usuario', icon: Activity, paath: '/company/reports/sessions'},
+                        { name: 'Navegacion por Usuario', icon: Navigation, path: '/company/reports/user-navigation'},
+                        { name: 'Chats Iniciados', icon: MessageCircle, path: '/company/reports/chats'}
+                    ]
+                }
             ]
         },
         {
