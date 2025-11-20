@@ -11,7 +11,7 @@ import {
     ChevronDown,
     ChevronUp,
     Clock,
-    WiFi,
+    Wifi,
     MapPin,
     UserCog,
     Megaphone,
@@ -52,6 +52,15 @@ import {
 } from 'lucide-react'
 
 const Sidebar = ({ isOpen, setIsOpen }) => {
+
+    const [ expandedSections, setExpandedSections] = useState({});
+    const toggleSection = (sectionKey) => {
+        setExpandedSections (prev => ({
+            ...prev,
+            [sectionKey]: !prev[sectionKey]
+        }))
+    }    
+
     const menuItems = [
         {
             section: 'Mi Empresa',
@@ -64,7 +73,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                     icon: Clock,
                     subItems: [
                         { name: 'Horarios', icon: LayoutDashboard, path: '/company/attendance/schedules'},
-                        { name: 'Tipos de Conexión', icon: 'Wifi', path: '/company/attendance/disconection-types'},
+                        { name: 'Tipos de Conexión', icon: Wifi, path: '/company/attendance/disconection-types'},
                         { name: 'Sede', icon: MapPin, path: '/company/attendance/branches' }
                     ]
                 },
@@ -73,7 +82,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                     icon: Users,
                     subItems: [
                         { name: 'Usuarios', icon: Users, path: '/company/users'},
-                        { name: 'Grupos de Usuarios', icon: UserCog, pah: '/company/groups' }
+                        { name: 'Grupos de Usuarios', icon: UserCog, path: '/company/groups' }
                     ]
                 },
                 {
@@ -87,10 +96,10 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                 {
                     name: 'Reportes',
                     icon: FileText,
-                    subitems: [
+                    subItems: [
                         { name: 'Asistencia', icon: Clock, path: '/company/reports/attendance'},
                         { name: 'Acceso al Sistema', icon: LogIn, path: '/company/reports/access'},
-                        { name: 'Movimientos por Usuario', icon: Activity, paath: '/company/reports/sessions'},
+                        { name: 'Movimientos por Usuario', icon: Activity, path: '/company/reports/sessions'},
                         { name: 'Navegación por Usuario', icon: Navigation, path: '/company/reports/user-navigation'},
                         { name: 'Chats Iniciados', icon: MessageCircle, path: '/company/reports/chats'}
                     ]
@@ -106,7 +115,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                 {
                     name: 'Gestion de Llamadas',
                     icon: Phone,
-                    subitems:[
+                    subItems:[
                         { name: 'Llamadas Manuales', icon: Phone, path: '/sales/calls/manual'},
                         { name: 'Llamadas en Progresivo', icon: Headphones, path: '/sales/calls/progressive'},
                         { name: 'Llamadas en Predictivo', icon: Radio, path: '/sales/calls/predictive'},
@@ -164,19 +173,101 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                 }
             ]
         },
-    ]
+    ];
+
+    const renderMenuItem = (item, isNested = false) => {
+        // Si tiene sub-items, es un acordeón
+        if (item.subItems) {
+            const isExpanded = expandedSections[item.name];
+            
+            return (
+                <div key={item.name} className="mb-1">
+                    <button
+                        onClick={() => toggleSection(item.name)}
+                        className={`
+                            flex items-center justify-between w-full px-3 py-2.5 rounded-lg
+                            transition-colors duration-200
+                            text-gray-700 hover:bg-gray-100
+                            ${!isOpen && 'justify-center'}
+                        `}
+                    >
+                        <div className="flex items-center">
+                            <item.icon className={`w-5 h-5 ${isOpen && 'mr-3'}`} />
+                            {isOpen && (
+                                <span className="text-sm font-medium">{item.name}</span>
+                            )}
+                        </div>
+                        {isOpen && (
+                            isExpanded ? (
+                                <ChevronUp className="w-4 h-4" />
+                            ) : (
+                                <ChevronDown className="w-4 h-4" />
+                            )
+                        )}
+                    </button>
+                    
+                    {/* Sub-items */}
+                    {isOpen && isExpanded && (
+                        <div className="ml-4 mt-1 space-y-1">
+                            {item.subItems.map((subItem) => (
+                                <NavLink
+                                    key={subItem.path}
+                                    to={subItem.path}
+                                    className={({ isActive }) => `
+                                        flex items-center px-3 py-2 rounded-lg
+                                        transition-colors duration-200
+                                        ${isActive 
+                                            ? 'bg-blue-50 text-blue-600' 
+                                            : 'text-gray-600 hover:bg-gray-50'
+                                        }
+                                    `}
+                                >
+                                    <subItem.icon className="w-4 h-4 mr-3" />
+                                    <span className="text-sm">{subItem.name}</span>
+                                </NavLink>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        // Item simple (sin sub-items)
+        return (
+            <NavLink
+                key={item.path}
+                to={item.path}
+                className={({ isActive }) => `
+                    flex items-center px-3 py-2.5 rounded-lg
+                    transition-colors duration-200
+                    ${isActive 
+                        ? 'bg-blue-50 text-blue-600' 
+                        : 'text-gray-700 hover:bg-gray-100'
+                    }
+                    ${!isOpen && 'justify-center'}
+                    ${isNested && 'ml-4'}
+                `}
+            >
+                <item.icon className={`w-5 h-5 ${isOpen && 'mr-3'}`} />
+                {isOpen && (
+                    <span className="text-sm font-medium">{item.name}</span>
+                )}
+            </NavLink>
+        );
+    };
 
     return (
         <>
-            {/* version movil? */}
+            {/* Overlay móvil */}
             {isOpen && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 z-20 lg:hidden"
+                <div 
+                    className="fixed inset-0 bg-black bg-opacity-50 z-20 lg:hidden"
                     onClick={() => setIsOpen(false)}
                 />
             )}
 
-            {/** Sidebar */}
-            <aside
+            {/* Sidebar */}
+            <aside 
                 className={`
                     fixed lg:static inset-y-0 left-0 z-30
                     bg-white border-r border-gray-200
@@ -215,40 +306,17 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                                         {section.section}
                                     </h3>
                                 )}
-
+                                
                                 <div className="space-y-1">
-                                    {section.items.map((item) => (
-                                        <NavLink
-                                            key={item.path}
-                                            to={item.path}
-                                            className={({ isActive }) => `
-                        flex items-center px-3 py-2.5 rounded-lg
-                        transition-colors duration-200
-                        ${isActive
-                                                    ? 'bg-blue-50 text-blue-600'
-                                                    : 'text-gray-700 hover:bg-gray-100'
-                                                }
-                        ${!isOpen && 'justify-center'}
-                      `}
-                                        >
-                                            <item.icon className={`w-5 h-5 ${isOpen && 'mr-3'}`} />
-                                            {isOpen && (
-                                                <span className="text-sm font-medium">{item.name}</span>
-                                            )}
-                                        </NavLink>
-                                    ))}
+                                    {section.items.map((item) => renderMenuItem(item))}
                                 </div>
                             </div>
                         ))}
                     </nav>
-
                 </div>
-
-            </aside >
-
+            </aside>
         </>
-    )
+    );
+};
 
-}
-
-export default Sidebar
+export default Sidebar;
