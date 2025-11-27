@@ -94,6 +94,89 @@ export const register = async (req, res) => {
             return res.status(400).json({ error: 'Missing required fields'});
         }
         
-        
+        const existingUser = await prisma.users.findUnique({
+            where: {
+                company_id_email: {
+                    company_id,
+                    email
+                }
+            }
+        });
+
+        if (existingUser) {
+            return res.status(409).json({error: 'User already exists'});
+        }
+
+        const hashedPassword = await bcrypt.hash(password,10);
+
+        const user = await prisma.useres.create({
+            data: {
+                company_id,
+                name,
+                email,
+                password: hashedPassword,
+                role_id,
+                branch_id,
+                schedule_id
+            },
+            include: {
+                role: true,
+                branch: true,
+                schedule: true,
+                company: true
+            }
+        });
+
+        const { password: _, ...userWithoutPassword } = user;
+
+        res.status(201).json({
+            message: 'User created succesfully',
+            user: userWithoutPassword
+        });
+
+    } catch ( error ){
+        console.error('Error', error);
+        res.status(500).json({error: 'Internal server error'});
+    }
+};
+
+export const getMe = async (req, res) => {
+    try{
+        const userId = req.user.userId;
+
+        const user = await prisma.users.findUnique({
+            where: {id: userId},
+            include: {
+                role: true,
+                branch: true,
+                schedule: true,
+                company:true
+            }
+        });
+
+        if( !user ) {
+            return res.status(404).json({error: 'User not found'});
+        }
+
+        const { password: _, ...userWithoutPassword } = user;
+
+        res.json({
+            user: {
+                ...userWithoutPassword,
+                full_email: `${user.email}${user.company.domain}`
+            },
+            company: {
+                id: user.company.id,
+                name: user.company.name,
+                domaun: user.company.name,
+                domain: user.company.domain,
+                primary_color: user.company.primary_color,
+                secondary_color: user.company.secondary_color,
+                logo_url: user.company.logo_url
+            }
+        });
+    } catch (error) {
+        console.error('GetMe error', error);
+        res.status(500).json({error: 'Internal server error'});
     }
 }
