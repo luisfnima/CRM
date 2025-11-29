@@ -1,6 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
-import { generateToken } from '../utils/jwt';
+import { generateToken } from '../utils/jwt.js';
 
 const prisma = new PrismaClient();
 
@@ -12,8 +12,8 @@ export const login = async (req, res) => {
             return res.status(400).json({error: 'Email and password are required'});
         }
 
-        const emailParts = email.split('@');
-        if(emailParts.lenght !== 2) {
+        const emailParts = email.includes('@') ? email.split('@') : [email, null];
+        if(!emailParts[1]) {
             return res.status(400).json({ error: 'Invalid email format'});
         }
 
@@ -47,7 +47,12 @@ export const login = async (req, res) => {
             return res.status(401).json({error: 'Invalid credentials or inactive user'});
         }
 
-        const isPasswordValid = await bcrpyt.compare(password, user.password);
+
+        console.log('password ingresado: ', password);
+        console.log('password de BBDD: ', user.password);
+        
+        const isPasswordValid = await bcrypt.compare(password, user.password);
+        console.log('valido?', isPasswordValid);
         if(!isPasswordValid) {
             return res.status(401).json({error: 'Invalid credentials'});
         }

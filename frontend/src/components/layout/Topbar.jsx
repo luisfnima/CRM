@@ -73,7 +73,7 @@ const Topbar = ({ toggleSidebar }) => {
                             </div>
                             <div className="hidden md:block text-left">
                                 <p className="text-xs font-medium text-gray-700">
-                                    {user?.role || 'Role'}
+                                    {user?.role?.name || 'Role'}
                                 </p>
                             </div>
                             <ChevronDown className="w-4 h-4 text-gray-600" />
