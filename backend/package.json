@@ -10,7 +10,11 @@
     "prisma:generate": "prisma generate",
     "prisma:studio": "prisma studio"
   },
-  "keywords": ["crm","callcenter","api"],
+  "keywords": [
+    "crm",
+    "callcenter",
+    "api"
+  ],
   "author": "",
   "license": "ISC",
   "dependencies": {

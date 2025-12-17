@@ -53,13 +53,18 @@ import {
 
 const Sidebar = ({ isOpen, setIsOpen }) => {
 
-    const [ expandedSections, setExpandedSections] = useState({});
+    const [expandedSections, setExpandedSections] = useState({});
+    
     const toggleSection = (sectionKey) => {
-        setExpandedSections (prev => ({
-            ...prev,
-            [sectionKey]: !prev[sectionKey]
-        }))
-    }    
+        setExpandedSections(prev => {
+            // Cerrar todas las secciones excepto la que se está abriendo
+            const newState = {};
+            if (!prev[sectionKey]) {
+                newState[sectionKey] = true;
+            }
+            return newState;
+        });
+    }
 
     const menuItems = [
         {
@@ -72,8 +77,8 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                     name: 'Config. de Asistencia',
                     icon: Clock,
                     subItems: [
-                        { name: 'Horarios', icon: LayoutDashboard, path: '/company/attendance/schedules'},
-                        { name: 'Tipos de Conexión', icon: Wifi, path: '/company/attendance/disconection-types'},
+                        { name: 'Horarios', icon: LayoutDashboard, path: '/company/attendance/schedules' },
+                        { name: 'Tipos de Conexión', icon: Wifi, path: '/company/attendance/disconection-types' },
                         { name: 'Sede', icon: MapPin, path: '/company/attendance/branches' }
                     ]
                 },
@@ -81,7 +86,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                     name: 'Administración de Usuarios',
                     icon: Users,
                     subItems: [
-                        { name: 'Usuarios', icon: Users, path: '/company/users'},
+                        { name: 'Usuarios', icon: Users, path: '/company/users' },
                         { name: 'Grupos de Usuarios', icon: UserCog, path: '/company/groups' }
                     ]
                 },
@@ -90,18 +95,18 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                     icon: Megaphone,
                     subItems: [
                         { name: 'Anuncios', icon: Megaphone, path: '/company/collab/announcements' },
-                        { name: 'Popups de Bienvenida', icon: MessageSquare, path: '/company/collab/popups'}
+                        { name: 'Popups de Bienvenida', icon: MessageSquare, path: '/company/collab/popups' }
                     ]
                 },
                 {
                     name: 'Reportes',
                     icon: FileText,
                     subItems: [
-                        { name: 'Asistencia', icon: Clock, path: '/company/reports/attendance'},
-                        { name: 'Acceso al Sistema', icon: LogIn, path: '/company/reports/access'},
-                        { name: 'Movimientos por Usuario', icon: Activity, path: '/company/reports/sessions'},
-                        { name: 'Navegación por Usuario', icon: Navigation, path: '/company/reports/user-navigation'},
-                        { name: 'Chats Iniciados', icon: MessageCircle, path: '/company/reports/chats'}
+                        { name: 'Asistencia', icon: Clock, path: '/company/reports/attendance' },
+                        { name: 'Acceso al Sistema', icon: LogIn, path: '/company/reports/access' },
+                        { name: 'Movimientos por Usuario', icon: Activity, path: '/company/reports/sessions' },
+                        { name: 'Navegación por Usuario', icon: Navigation, path: '/company/reports/user-navigation' },
+                        { name: 'Chats Iniciados', icon: MessageCircle, path: '/company/reports/chats' }
                     ]
                 }
             ]
@@ -110,39 +115,39 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
             section: 'Ventas',
             key: 'sales',
             items: [
-                { name: 'Inicio', icon: TrendingUp, path: '/sales/main'},
-                { name: 'Gestion de Ventas', icon: Target, path: '/sales/sales'},
+                { name: 'Inicio', icon: TrendingUp, path: '/sales/main' },
+                { name: 'Gestion de Ventas', icon: Target, path: '/sales/sales' },
                 {
                     name: 'Gestion de Llamadas',
                     icon: Phone,
-                    subItems:[
-                        { name: 'Llamadas Manuales', icon: Phone, path: '/sales/calls/manual'},
-                        { name: 'Llamadas en Progresivo', icon: Headphones, path: '/sales/calls/progressive'},
-                        { name: 'Llamadas en Predictivo', icon: Radio, path: '/sales/calls/predictive'},
-                        { name: 'Monitoreo de Llamadas', icon: Eye, path: '/sales/calls/online-report'},
-                        { name: 'Campañas Telefónicas (Predictivo)', icon: Radio, path: '/sales/calls/leads-campaigns'},
-                        { name: 'Configuración Telefónica', icon: SettingsIcon, path: '/sales/calls/config'}
+                    subItems: [
+                        { name: 'Llamadas Manuales', icon: Phone, path: '/sales/calls/manual' },
+                        { name: 'Llamadas en Progresivo', icon: Headphones, path: '/sales/calls/progressive' },
+                        { name: 'Llamadas en Predictivo', icon: Radio, path: '/sales/calls/predictive' },
+                        { name: 'Monitoreo de Llamadas', icon: Eye, path: '/sales/calls/online-report' },
+                        { name: 'Campañas Telefónicas (Predictivo)', icon: Radio, path: '/sales/calls/leads-campaigns' },
+                        { name: 'Configuración Telefónica', icon: SettingsIcon, path: '/sales/calls/config' }
                     ]
                 },
                 {
                     name: 'Configuracion de Campañas',
                     icon: Settings,
                     subItems: [
-                        { name: 'Campañas', icon: Target, path: '/sales/campaign-config/campaigns'},
-                        { name: 'Pestañas de Estados', icon: Layers, path: '/sales/campaign-config/status-tab'},
-                        { name: 'Estados', icon: Grid, path: '/sales/campaign-config/status'},
-                        { name: 'Bloques de Campos', icon: Layers, path: '/sales/campaign-config/fields-blocks'},
-                        { name: 'Campos', icon: Grid, path: '/sales/campaign-config/fields'},
-                        { name: 'Categorías', icon: Tag, path: '/sales/campaign-config/categories'},
-                        { name: 'Productos', icon: Package, path: '/sales/campaign-config/products'},
-                        { name: 'Promociones', icon: Percent, path: '/sales/campaign-config/promotions'},
-                        { name: 'Supervisores', icon: UserCog, path: '/sales/campaign-config/supervisors'},
-                        { name: 'Agentes', icon: UsersIcon, path: '/sales/campaign-config/agents'},
-                        { name: 'Back Office / Jefes de Equipo', icon: Briefcase, path: '/sales/campaign-config/backoffices'},
+                        { name: 'Campañas', icon: Target, path: '/sales/campaign-config/campaigns' },
+                        { name: 'Pestañas de Estados', icon: Layers, path: '/sales/campaign-config/status-tab' },
+                        { name: 'Estados', icon: Grid, path: '/sales/campaign-config/status' },
+                        { name: 'Bloques de Campos', icon: Layers, path: '/sales/campaign-config/fields-blocks' },
+                        { name: 'Campos', icon: Grid, path: '/sales/campaign-config/fields-' },
+                        { name: 'Categorías', icon: Tag, path: '/sales/campaign-config/categories' },
+                        { name: 'Productos', icon: Package, path: '/sales/campaign-config/products' },
+                        { name: 'Promociones', icon: Percent, path: '/sales/campaign-config/promotions' },
+                        { name: 'Supervisores', icon: UserCog, path: '/sales/campaign-config/supervisors' },
+                        { name: 'Agentes', icon: UsersIcon, path: '/sales/campaign-config/agents' },
+                        { name: 'Back Office / Jefes de Equipo', icon: Briefcase, path: '/sales/campaign-config/backoffices' },
                         { name: 'Config. de Proyecciones de Venta', icon: TrendingUp, path: '/sales/campaign-config/projections' },
                         { name: 'Listas de Leads', icon: List, path: '/sales/campaign-config/lead-lists' },
                         { name: 'Listas Negras', icon: Ban, path: '/sales/campaign-config/robinson-lists' },
-                        { name: 'Tipos de Tipificaciones', icon: Tag, path: '/sales/campaign-config/result-types'},
+                        { name: 'Tipos de Tipificaciones', icon: Tag, path: '/sales/campaign-config/result-types' },
                         { name: 'Tipificaciones', icon: CheckSquare, path: '/sales/campaign-config/results' }
                     ]
                 },
@@ -155,20 +160,20 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                         { name: 'Consolidado de Ventas', icon: BarChart, path: '/sales/reports/consolidated' },
                         { name: 'Monitoreo Diario de Ventas', icon: Calendar, path: '/sales/reports/sales-monitoring' },
                         { name: 'Monitoreo BackOffice', icon: Briefcase, path: '/sales/reports/backoffice-monitoring' },
-                        { name: 'Llamadas Tipificadas', icon: PhoneCall, path: '/sales/reports/calls'},
-                        { name: 'Grabaciones por Dia', icon: Mic, path: '/sales/reports/recordings'},
-                        { name: 'Grabaciones por Telefono', icon: Phone, path: '/sales/reports/recordings-phone'},
-                        { name: 'Resúmen de Duracion de Audios', icon: Clock3, path: '/sales/reports/recordings-duration-summary'},
-                        { name: 'Resumen Tipificaciones por Lista', icon: List, path: '/sales/reports/result-list-summary'},
-                        { name: 'Búsqueda de Leads Gestionados', icon: Search, path: '/sales/reports/leads-search'},
-                        { name: 'Leads por Lista', icon: Database, path: '/sales/reports/leads-per-list'},
-                        { name: 'Tiempos de Gestión Telefónica', icon: Clock, path: '/sales/reports/call-times'},
-                        { name: 'Tiempo Agente sin Vender', icon: Clock3, path: '/sales/reports/agent-without-selling'},
-                        { name: 'Ventas Contabilizadas por Campos', icon: Grid, path: '/sales/reports/fields-grouped'},
+                        { name: 'Llamadas Tipificadas', icon: PhoneCall, path: '/sales/reports/calls' },
+                        { name: 'Grabaciones por Dia', icon: Mic, path: '/sales/reports/recordings' },
+                        { name: 'Grabaciones por Telefono', icon: Phone, path: '/sales/reports/recordings-phone' },
+                        { name: 'Resúmen de Duracion de Audios', icon: Clock3, path: '/sales/reports/recordings-duration-summary' },
+                        { name: 'Resumen Tipificaciones por Lista', icon: List, path: '/sales/reports/result-list-summary' },
+                        { name: 'Búsqueda de Leads Gestionados', icon: Search, path: '/sales/reports/leads-search' },
+                        { name: 'Leads por Lista', icon: Database, path: '/sales/reports/leads-per-list' },
+                        { name: 'Tiempos de Gestión Telefónica', icon: Clock, path: '/sales/reports/call-times' },
+                        { name: 'Tiempo Agente sin Vender', icon: Clock3, path: '/sales/reports/agent-without-selling' },
+                        { name: 'Ventas Contabilizadas por Campos', icon: Grid, path: '/sales/reports/fields-grouped' },
                         { name: 'Calendarios de Leads Gestionados', icon: Calendar, path: '/sales/reports/leads-calendar' },
                         { name: 'Interaccion de Ventas', icon: Activity, path: '/sales/reports/sales-interaction' },
-                        { name: 'Log Exportados de Ventas', icon: Download, path: '/sale/reports/export-sales-log'},
-                        { name: 'Proyecciones de Ventas', icon: PieChart, path: '/sales/reports/'}
+                        { name: 'Log Exportados de Ventas', icon: Download, path: '/sale/reports/export-sales-log' },
+                        { name: 'Proyecciones de Ventas', icon: PieChart, path: '/sales/reports/' }
                     ]
                 }
             ]
@@ -176,81 +181,108 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
     ];
 
     const renderMenuItem = (item, isNested = false) => {
-        // Si tiene sub-items, es un acordeón
         if (item.subItems) {
             const isExpanded = expandedSections[item.name];
-            
+
             return (
-                <div key={item.name} className="mb-1">
+                <div key={item.name} className="mb-0.5">
                     <button
                         onClick={() => toggleSection(item.name)}
                         className={`
-                            flex items-center justify-between w-full px-3 py-2.5 rounded-lg
-                            transition-colors duration-200
-                            text-gray-700 hover:bg-gray-100
-                            ${!isOpen && 'justify-center'}
+                            group flex items-center w-full rounded-md
+                            transition-all duration-200 ease-out
+                            text-gray-300 hover:text-white hover:bg-white/5
+                            ${isExpanded ? 'bg-white/5 text-white' : ''}
+                            ${isOpen ? 'justify-between px-3 py-2.5' : 'justify-center py-2.5'}
                         `}
                     >
-                        <div className="flex items-center">
-                            <item.icon className={`w-5 h-5 ${isOpen && 'mr-3'}`} />
+                        <div className="flex items-center justify-center min-w-0">
+                            <div className={`
+                                flex items-center justify-center w-9 h-9 rounded-md flex-shrink-0
+                                transition-all duration-200
+                                ${isExpanded 
+                                    ? 'bg-red-600 text-white' 
+                                    : 'bg-gray-700 text-gray-400 group-hover:bg-gray-600 group-hover:text-red-400'
+                                }
+                            `}>
+                                <item.icon className="w-5 h-5" strokeWidth={2} />
+                            </div>
                             {isOpen && (
-                                <span className="text-sm font-medium">{item.name}</span>
+                                <span className="ml-3 text-sm font-medium text-left truncate">{item.name}</span>
                             )}
                         </div>
                         {isOpen && (
-                            isExpanded ? (
-                                <ChevronUp className="w-4 h-4" />
-                            ) : (
-                                <ChevronDown className="w-4 h-4" />
-                            )
+                            <div className={`
+                                transition-transform duration-200 flex-shrink-0 ml-2
+                                ${isExpanded ? 'rotate-180' : ''}
+                            `}>
+                                <ChevronDown className="w-4 h-4 text-gray-500" strokeWidth={2} />
+                            </div>
                         )}
                     </button>
-                    
-                    {/* Sub-items */}
-                    {isOpen && isExpanded && (
-                        <div className="ml-4 mt-1 space-y-1">
+
+                    {/* Sub-items con animación */}
+                    <div className={`
+                        overflow-hidden transition-all duration-300 ease-out
+                        ${isOpen && isExpanded ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'}
+                    `}>
+                        <div className="ml-5 mt-1 pl-4 border-l-2 border-gray-700 space-y-0.5">
                             {item.subItems.map((subItem) => (
                                 <NavLink
                                     key={subItem.path}
                                     to={subItem.path}
                                     className={({ isActive }) => `
-                                        flex items-center px-3 py-2 rounded-lg
-                                        transition-colors duration-200
-                                        ${isActive 
-                                            ? 'bg-blue-50 text-blue-600' 
-                                            : 'text-gray-600 hover:bg-gray-50'
+                                        group flex items-center px-3 py-2 rounded-md
+                                        transition-all duration-200
+                                        ${isActive
+                                            ? 'bg-red-600 text-white shadow-lg shadow-red-900/30'
+                                            : 'text-gray-400 hover:text-white hover:bg-white/5'
                                         }
                                     `}
                                 >
-                                    <subItem.icon className="w-4 h-4 mr-3" />
-                                    <span className="text-sm">{subItem.name}</span>
+                                    <div className="flex items-center justify-center w-4 h-4 flex-shrink-0 mr-2.5">
+                                        <subItem.icon className="w-4 h-4" strokeWidth={2} />
+                                    </div>
+                                    <span className="text-sm text-left truncate">{subItem.name}</span>
                                 </NavLink>
                             ))}
                         </div>
-                    )}
+                    </div>
                 </div>
             );
         }
 
-        // Item simple (sin sub-items)
+        // Item simple
         return (
             <NavLink
                 key={item.path}
                 to={item.path}
                 className={({ isActive }) => `
-                    flex items-center px-3 py-2.5 rounded-lg
-                    transition-colors duration-200
-                    ${isActive 
-                        ? 'bg-blue-50 text-blue-600' 
-                        : 'text-gray-700 hover:bg-gray-100'
+                    group flex items-center rounded-md mb-0.5
+                    transition-all duration-200 ease-out
+                    ${isActive
+                        ? 'bg-red-600 text-white shadow-lg shadow-red-900/30'
+                        : 'text-gray-300 hover:text-white hover:bg-white/5'
                     }
-                    ${!isOpen && 'justify-center'}
-                    ${isNested && 'ml-4'}
+                    ${isOpen ? 'px-3 py-2.5' : 'justify-center py-2.5'}
                 `}
             >
-                <item.icon className={`w-5 h-5 ${isOpen && 'mr-3'}`} />
-                {isOpen && (
-                    <span className="text-sm font-medium">{item.name}</span>
+                {({ isActive }) => (
+                    <>
+                        <div className={`
+                            flex items-center justify-center w-9 h-9 rounded-md flex-shrink-0
+                            transition-all duration-200
+                            ${isActive
+                                ? 'bg-red-700'
+                                : 'bg-gray-700 text-gray-400 group-hover:bg-gray-600 group-hover:text-red-400'
+                            }
+                        `}>
+                            <item.icon className={`w-5 h-5 ${isActive ? 'text-white' : ''}`} strokeWidth={2} />
+                        </div>
+                        {isOpen && (
+                            <span className="ml-3 text-sm font-medium text-left truncate">{item.name}</span>
+                        )}
+                    </>
                 )}
             </NavLink>
         );
@@ -260,59 +292,100 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
         <>
             {/* Overlay móvil */}
             {isOpen && (
-                <div 
-                    className="fixed inset-0 bg-black bg-opacity-50 z-20 lg:hidden"
+                <div
+                    className="fixed inset-0 bg-black/60 backdrop-blur-sm z-20 lg:hidden"
                     onClick={() => setIsOpen(false)}
                 />
             )}
 
             {/* Sidebar */}
-            <aside 
+            <aside
                 className={`
                     fixed lg:static inset-y-0 left-0 z-30
-                    bg-white border-r border-gray-200
+                    bg-gray-900 border-r border-gray-800
                     transition-all duration-300 ease-in-out
-                    ${isOpen ? 'w-64' : 'w-0 lg:w-20'}
+                    shadow-2xl lg:shadow-none
+                    ${isOpen ? 'w-72' : 'w-0 lg:w-20'}
                     overflow-hidden
                 `}
             >
                 <div className="flex flex-col h-full">
-                    {/* Logo */}
-                    <div className="flex items-center justify-between h-16 px-4 border-b border-gray-200">
-                        {isOpen && (
-                            <div className="flex items-center space-x-2">
-                                <Building2 className="w-8 h-8 text-blue-600" />
-                                <span className="text-xl font-bold text-gray-800">CRM Call</span>
+                    {/* Header / Logo */}
+                    <div className="flex items-center justify-center h-16 px-4 border-b border-gray-800 bg-gray-900">
+                        {isOpen ? (
+                            <div className="flex items-center space-x-3 w-full">
+                                <div className="flex items-center justify-center w-10 h-10 bg-red-600 rounded-lg shadow-lg shadow-red-900/40 flex-shrink-0">
+                                    <Building2 className="w-5 h-5 text-white" strokeWidth={2} />
+                                </div>
+                                <div className="flex flex-col min-w-0 flex-1">
+                                    <span className="text-lg font-bold text-white tracking-tight truncate">CRM DreamTeam</span>
+                                    <span className="text-xs text-gray-500 font-medium">Enterprise Suite</span>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="flex items-center justify-center w-full">
+                                <div className="flex items-center justify-center w-10 h-10 bg-red-600 rounded-lg shadow-lg shadow-red-900/40">
+                                    <Building2 className="w-5 h-5 text-white" strokeWidth={2} />
+                                </div>
                             </div>
                         )}
-                        <button
-                            onClick={() => setIsOpen(!isOpen)}
-                            className="hidden lg:block p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
-                        >
-                            {isOpen ? (
-                                <ChevronLeft className="w-5 h-5 text-gray-600" />
-                            ) : (
-                                <ChevronRight className="w-5 h-5 text-gray-600" />
-                            )}
-                        </button>
                     </div>
 
                     {/* Navigation */}
-                    <nav className="flex-1 overflow-y-auto py-4 px-2">
+                    <nav className="flex-1 overflow-y-auto py-4 px-3 custom-scrollbar bg-gray-900">
                         {menuItems.map((section, idx) => (
                             <div key={idx} className="mb-6">
                                 {isOpen && (
-                                    <h3 className="px-3 mb-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                                        {section.section}
-                                    </h3>
+                                    <div className="flex items-center px-3 mb-3">
+                                        <div className="h-px flex-1 bg-gradient-to-r from-gray-700 to-transparent"></div>
+                                        <h3 className="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                                            {section.section}
+                                        </h3>
+                                        <div className="h-px flex-1 bg-gradient-to-l from-gray-700 to-transparent"></div>
+                                    </div>
                                 )}
-                                
-                                <div className="space-y-1">
+
+                                <div className="space-y-0.5">
                                     {section.items.map((item) => renderMenuItem(item))}
                                 </div>
                             </div>
                         ))}
                     </nav>
+
+                    {/* Footer */}
+                    {isOpen && (
+                        <div className="p-4 border-t border-gray-800 bg-gray-900/50">
+                            <div className="flex items-center space-x-3">
+                                <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse flex-shrink-0"></div>
+                                <span className="text-xs text-gray-500">Sistema Activo</span>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Estilos del scrollbar */}
+                    <style jsx>{`
+                        .custom-scrollbar::-webkit-scrollbar {
+                            width: 6px;
+                        }
+                        
+                        .custom-scrollbar::-webkit-scrollbar-track {
+                            background: transparent;
+                        }
+                        
+                        .custom-scrollbar::-webkit-scrollbar-thumb {
+                            background: #374151;
+                            border-radius: 10px;
+                        }
+                        
+                        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+                            background: #4b5563;
+                        }
+                        
+                        .custom-scrollbar {
+                            scrollbar-width: thin;
+                            scrollbar-color: #374151 transparent;
+                        }
+                    `}</style>
                 </div>
             </aside>
         </>
