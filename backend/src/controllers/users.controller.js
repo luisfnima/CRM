@@ -529,3 +529,202 @@ export const resetPassword = async (req, res) => {
     });
   }
 };
+
+// ==================== HELPERS PARA USERS (ACTUALIZADO CON role_type) ====================
+// Agregar estos métodos al final del archivo users.controller.js existente
+// REEMPLAZAR los métodos anteriores si ya existen
+
+/**
+ * GET /api/users/agents
+ * Obtener solo usuarios con role_type = 'agent'
+ */
+export const getAgents = async (req, res) => {
+  try {
+    const { companyId } = req.user;
+    const { status = 'active' } = req.query;
+
+    // Buscar roles con role_type = 'agent'
+    const agentRoles = await prisma.roles.findMany({
+      where: {
+        company_id: companyId,
+        role_type: 'agent',
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    const roleIds = agentRoles.map(r => r.id);
+
+    const agents = await prisma.users.findMany({
+      where: {
+        company_id: companyId,
+        role_id: { in: roleIds },
+        ...(status && { status }),
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        status: true,
+        photo_url: true,
+        role: {
+          select: {
+            id: true,
+            name: true,
+            role_type: true,
+          },
+        },
+      },
+      orderBy: {
+        name: 'asc',
+      },
+    });
+
+    res.json({
+      success: true,
+      data: agents,
+    });
+  } catch (error) {
+    console.error('Error fetching agents:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch agents',
+    });
+  }
+};
+
+/**
+ * GET /api/users/supervisors
+ * Obtener solo usuarios con role_type = 'supervisor'
+ */
+export const getSupervisors = async (req, res) => {
+  try {
+    const { companyId } = req.user;
+    const { status = 'active' } = req.query;
+
+    // Buscar roles con role_type = 'supervisor'
+    const supervisorRoles = await prisma.roles.findMany({
+      where: {
+        company_id: companyId,
+        role_type: 'supervisor',
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    const roleIds = supervisorRoles.map(r => r.id);
+
+    const supervisors = await prisma.users.findMany({
+      where: {
+        company_id: companyId,
+        role_id: { in: roleIds },
+        ...(status && { status }),
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        status: true,
+        photo_url: true,
+        role: {
+          select: {
+            id: true,
+            name: true,
+            role_type: true,
+          },
+        },
+      },
+      orderBy: {
+        name: 'asc',
+      },
+    });
+
+    res.json({
+      success: true,
+      data: supervisors,
+    });
+  } catch (error) {
+    console.error('Error fetching supervisors:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch supervisors',
+    });
+  }
+};
+
+/**
+ * GET /api/users/available
+ * Obtener usuarios activos disponibles para asignar
+ * Query params: role_type (admin, supervisor, backoffice, agent)
+ */
+export const getAvailableUsers = async (req, res) => {
+  try {
+    const { companyId } = req.user;
+    const { role_type } = req.query;
+
+    let roleFilter = {};
+
+    if (role_type) {
+      // Validar que sea un role_type válido
+      const validTypes = ['admin', 'supervisor', 'backoffice', 'agent'];
+      
+      if (validTypes.includes(role_type)) {
+        const roles = await prisma.roles.findMany({
+          where: {
+            company_id: companyId,
+            role_type: role_type,
+          },
+          select: { id: true },
+        });
+
+        roleFilter = { role_id: { in: roles.map(r => r.id) } };
+      }
+    }
+
+    const users = await prisma.users.findMany({
+      where: {
+        company_id: companyId,
+        status: 'active',
+        ...roleFilter,
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        photo_url: true,
+        role: {
+          select: {
+            id: true,
+            name: true,
+            role_type: true,
+          },
+        },
+        branch: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+      orderBy: {
+        name: 'asc',
+      },
+    });
+
+    res.json({
+      success: true,
+      data: users,
+    });
+  } catch (error) {
+    console.error('Error fetching available users:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch available users',
+    });
+  }
+};
