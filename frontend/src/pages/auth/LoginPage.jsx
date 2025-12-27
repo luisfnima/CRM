@@ -1,43 +1,45 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Building2, Mail, Lock, Eye, EyeOff, UserCircle } from "lucide-react";
-import { useAuthStore } from '../../store/authStore';
-import { useThemeStore } from '../../store/themeStore';
-import { authService } from '../../services/authService';
+import { authAPI } from "../../services/api";
+import { useAuthStore } from "../../store/authStore";      // ← CAMBIO AQUÍ
+import { useThemeStore } from "../../store/themeStore";    // ← CAMBIO AQUÍ
 import toast from 'react-hot-toast';
 
 const LoginPage = () => {
-    const [email, setEmail] = useState('')
-    const [password, setPassword] = useState('')
-    const [showPassword, setShowPassword] = useState(false)
-    const [loading, setLoading] = useState(false)
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
+    const [loading, setLoading] = useState(false);
 
-    const { login } = useAuthStore()
-    const { setTheme } = useThemeStore()
-    const navigate = useNavigate()
+    const { login } = useAuthStore();
+    const { setTheme } = useThemeStore();
+    const navigate = useNavigate();
 
     const handleSubmit = async (e) => {
-        e.preventDefault()
-        setLoading(true)
+        e.preventDefault();
+        setLoading(true);
 
         try {
-            // authService.login ya retorna response.data
-            const data = await authService.login(email, password);
+            const response = await authAPI.login(email, password);
+            const { user, token, company } = response.data;
 
             // Guardar datos en stores
-            login(data.user, data.token, data.company);
-            setTheme(data.company);
+            login(user, token, company);
+            setTheme(company);
 
             toast.success('¡Bienvenido de nuevo!');
             navigate('/');
         } catch (error) {
             console.error('Login error:', error);
-            const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Error al iniciar sesión';
+            const errorMessage = error.response?.data?.error || 
+                               error.response?.data?.message || 
+                               'Error al iniciar sesión';
             toast.error(errorMessage);
         } finally {
             setLoading(false);
         }
-    }
+    };
 
     return (
         <div className="min-h-screen flex">

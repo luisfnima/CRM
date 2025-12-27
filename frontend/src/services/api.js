@@ -9,7 +9,6 @@ const axiosInstance = axios.create({
     }
 });
 
-// Interceptor para agregar token a las peticiones
 axiosInstance.interceptors.request.use(
     (config) => {
         const token = localStorage.getItem('auth-store');
@@ -24,17 +23,11 @@ axiosInstance.interceptors.request.use(
     (error) => Promise.reject(error)
 );
 
-// Interceptor para manejar errores globales
-axiosInstance.interceptors.response.use(
-    (response) => response,
-    (error) => {
-        if (error.response?.status === 401) {
-            // Token inválido o expirado
-            localStorage.removeItem('auth-store');
-            window.location.href = '/login';
-        }
-        return Promise.reject(error);
-    }
-);
+
+export const authAPI = {
+  login: (email, password) => axiosInstance.post('/auth/login', { email, password }),
+  register: (userData) => axiosInstance.post('/auth/register', userData),
+  getMe: () => axiosInstance.get('/auth/me')
+};
 
 export default axiosInstance;
