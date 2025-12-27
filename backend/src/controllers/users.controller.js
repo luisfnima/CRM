@@ -225,3 +225,277 @@ export const resetPassword = async (req, res) => {
     });
   }
 };
+
+
+// ==================== HELPERS PARA USERS ====================
+// Agregar estos métodos al final del archivo users.controller.js existente
+
+/**
+ * GET /api/users/agents
+ * Obtener solo usuarios con rol de agente
+ */
+export const getAgents = async (req, res) => {
+  try {
+    const { companyId } = req.user;
+    const { status = 'active' } = req.query;
+
+    // Buscar el rol "agente" o similar
+    const agentRoles = await prisma.roles.findMany({
+      where: {
+        company_id: companyId,
+        OR: [
+          { name: { contains: 'agente', mode: 'insensitive' } },
+          { name: { contains: 'agent', mode: 'insensitive' } },
+          { name: { contains: 'asesor', mode: 'insensitive' } },
+        ],
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    const roleIds = agentRoles.map(r => r.id);
+
+    const agents = await prisma.users.findMany({
+      where: {
+        company_id: companyId,
+        role_id: { in: roleIds },
+        ...(status && { status }),
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        status: true,
+        photo_url: true,
+        role: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+      orderBy: {
+        name: 'asc',
+      },
+    });
+
+    res.json({
+      success: true,
+      data: agents,
+    });
+  } catch (error) {
+    console.error('Error fetching agents:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch agents',
+    });
+  }
+};
+
+/**
+ * GET /api/users/supervisors
+ * Obtener solo usuarios con rol de supervisor
+ */
+export const getSupervisors = async (req, res) => {
+  try {
+    const { companyId } = req.user;
+    const { status = 'active' } = req.query;
+
+    // Buscar el rol "supervisor" o similar
+    const supervisorRoles = await prisma.roles.findMany({
+      where: {
+        company_id: companyId,
+        OR: [
+          { name: { contains: 'supervisor', mode: 'insensitive' } },
+          { name: { contains: 'admin', mode: 'insensitive' } },
+        ],
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    const roleIds = supervisorRoles.map(r => r.id);
+
+    const supervisors = await prisma.users.findMany({
+      where: {
+        company_id: companyId,
+        role_id: { in: roleIds },
+        ...(status && { status }),
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        status: true,
+        photo_url: true,
+        role: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+      orderBy: {
+        name: 'asc',
+      },
+    });
+
+    res.json({
+      success: true,
+      data: supervisors,
+    });
+  } catch (error) {
+    console.error('Error fetching supervisors:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch supervisors',
+    });
+  }
+};
+
+/**
+ * GET /api/users/available
+ * Obtener usuarios activos disponibles para asignar
+ */
+export const getAvailableUsers = async (req, res) => {
+  try {
+    const { companyId } = req.user;
+    const { role_type } = req.query; // 'agent', 'supervisor', 'all'
+
+    let roleFilter = {};
+
+    if (role_type) {
+      let roleNames = [];
+      
+      if (role_type === 'agent') {
+        roleNames = ['agente', 'agent', 'asesor'];
+      } else if (role_type === 'supervisor') {
+        roleNames = ['supervisor', 'admin'];
+      }
+
+      if (roleNames.length > 0) {
+        const roles = await prisma.roles.findMany({
+          where: {
+            company_id: companyId,
+            OR: roleNames.map(name => ({
+              name: { contains: name, mode: 'insensitive' }
+            })),
+          },
+          select: { id: true },
+        });
+
+        roleFilter = { role_id: { in: roles.map(r => r.id) } };
+      }
+    }
+
+    const users = await prisma.users.findMany({
+      where: {
+        company_id: companyId,
+        status: 'active',
+        ...roleFilter,
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        photo_url: true,
+        role: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        branch: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+      orderBy: {
+        name: 'asc',
+      },
+    });
+
+    res.json({
+      success: true,
+      data: users,
+    });
+  } catch (error) {
+    console.error('Error fetching available users:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch available users',
+    });
+  }
+};
+
+/**
+ * GET /api/users/:id
+ * Obtener un usuario específico
+ */
+export const getUserById = async (req, res) => {
+  try {
+    const { companyId } = req.user;
+    const { id } = req.params;
+
+    const user = await prisma.users.findFirst({
+      where: {
+        id: parseInt(id),
+        company_id: companyId,
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        status: true,
+        photo_url: true,
+        last_access: true,
+        created_at: true,
+        role: {
+          select: {
+            id: true,
+            name: true,
+            description: true,
+          },
+        },
+        branch: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        schedule: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found',
+      });
+    }
+
+    res.json({
+      success: true,
+      data: user,
+    });
+  } catch (error) {
+    console.error('Error fetching user:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch user',
+    });
+  }
+};

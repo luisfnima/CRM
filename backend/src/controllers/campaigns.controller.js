@@ -478,52 +478,6 @@ export const removeUserFromCampaign = async (req, res) => {
 };
 
 /**
- * GET /api/campaigns/:id/statuses
- * Obtener estados de la campaña
- */
-export const getCampaignStatuses = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const companyId = req.user?.companyId;
-
-    const campaign = await prisma.campaigns.findFirst({
-      where: {
-        id: parseInt(id),
-        company_id: companyId,
-      },
-    });
-
-    if (!campaign) {
-      return res.status(404).json({
-        success: false,
-        error: 'Campaign not found',
-      });
-    }
-
-    const statusTabs = await prisma.status_tabs.findMany({
-      where: { campaign_id: parseInt(id) },
-      include: {
-        statuses: {
-          orderBy: { display_order: 'asc' },
-        },
-      },
-      orderBy: { display_order: 'asc' },
-    });
-
-    res.json({
-      success: true,
-      data: statusTabs,
-    });
-  } catch (error) {
-    console.error('Error getting campaign statuses:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Internal server error',
-    });
-  }
-};
-
-/**
  * POST /api/campaigns/:id/statuses
  * Crear estado en la campaña
  */
@@ -595,51 +549,7 @@ export const createCampaignStatus = async (req, res) => {
   }
 };
 
-/**
- * GET /api/campaigns/:id/fields
- * Obtener campos personalizados de la campaña
- */
-export const getCampaignFields = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const companyId = req.user?.companyId;
 
-    const campaign = await prisma.campaigns.findFirst({
-      where: {
-        id: parseInt(id),
-        company_id: companyId,
-      },
-    });
-
-    if (!campaign) {
-      return res.status(404).json({
-        success: false,
-        error: 'Campaign not found',
-      });
-    }
-
-    const fieldBlocks = await prisma.field_blocks.findMany({
-      where: { campaign_id: parseInt(id) },
-      include: {
-        fields: {
-          orderBy: { display_order: 'asc' },
-        },
-      },
-      orderBy: { display_order: 'asc' },
-    });
-
-    res.json({
-      success: true,
-      data: fieldBlocks,
-    });
-  } catch (error) {
-    console.error('Error getting campaign fields:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Internal server error',
-    });
-  }
-};
 
 /**
  * POST /api/campaigns/:id/fields
@@ -719,6 +629,498 @@ export const createCampaignField = async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Internal server error',
+    });
+  }
+};
+
+// ==================== HELPERS PARA CAMPAIGNS ====================
+// Agregar estos métodos al archivo campaigns.controller.js existente
+
+/**
+ * GET /api/campaigns/:id/statuses
+ * Obtener todos los estados de una campaña
+ */
+export const getCampaignStatuses = async (req, res) => {
+  try {
+    const { companyId } = req.user;
+    const { id } = req.params;
+
+    // Verificar que la campaña pertenece a la empresa
+    const campaign = await prisma.campaigns.findFirst({
+      where: {
+        id: parseInt(id),
+        company_id: companyId,
+      },
+    });
+
+    if (!campaign) {
+      return res.status(404).json({
+        success: false,
+        error: 'Campaign not found',
+      });
+    }
+
+    // Obtener todos los estados agrupados por pestaña
+    const statusTabs = await prisma.status_tabs.findMany({
+      where: {
+        campaign_id: parseInt(id),
+      },
+      include: {
+        statuses: {
+          orderBy: {
+            display_order: 'asc',
+          },
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            color: true,
+            is_final: true,
+            is_global: true,
+            display_order: true,
+          },
+        },
+      },
+      orderBy: {
+        display_order: 'asc',
+      },
+    });
+
+    // También obtener estados sin pestaña
+    const statusesWithoutTab = await prisma.statuses.findMany({
+      where: {
+        campaign_id: parseInt(id),
+        status_tab_id: null,
+      },
+      orderBy: {
+        display_order: 'asc',
+      },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        color: true,
+        is_final: true,
+        is_global: true,
+        display_order: true,
+      },
+    });
+
+    res.json({
+      success: true,
+      data: {
+        tabs: statusTabs,
+        ungrouped: statusesWithoutTab,
+      },
+    });
+  } catch (error) {
+    console.error('Error fetching campaign statuses:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch campaign statuses',
+    });
+  }
+};
+
+/**
+ * GET /api/campaigns/:id/fields
+ * Obtener todos los campos dinámicos de una campaña
+ */
+export const getCampaignFields = async (req, res) => {
+  try {
+    const { companyId } = req.user;
+    const { id } = req.params;
+
+    // Verificar que la campaña pertenece a la empresa
+    const campaign = await prisma.campaigns.findFirst({
+      where: {
+        id: parseInt(id),
+        company_id: companyId,
+      },
+    });
+
+    if (!campaign) {
+      return res.status(404).json({
+        success: false,
+        error: 'Campaign not found',
+      });
+    }
+
+    // Obtener todos los bloques con sus campos
+    const fieldBlocks = await prisma.field_blocks.findMany({
+      where: {
+        campaign_id: parseInt(id),
+      },
+      include: {
+        fields: {
+          orderBy: {
+            display_order: 'asc',
+          },
+          select: {
+            id: true,
+            name: true,
+            label: true,
+            field_type: true,
+            options: true,
+            default_value: true,
+            placeholder: true,
+            help_text: true,
+            required: true,
+            display_order: true,
+            validation_rules: true,
+          },
+        },
+      },
+      orderBy: {
+        display_order: 'asc',
+      },
+    });
+
+    // También obtener campos sin bloque
+    const fieldsWithoutBlock = await prisma.fields.findMany({
+      where: {
+        campaign_id: parseInt(id),
+        block_id: null,
+      },
+      orderBy: {
+        display_order: 'asc',
+      },
+      select: {
+        id: true,
+        name: true,
+        label: true,
+        field_type: true,
+        options: true,
+        default_value: true,
+        placeholder: true,
+        help_text: true,
+        required: true,
+        display_order: true,
+        validation_rules: true,
+      },
+    });
+
+    res.json({
+      success: true,
+      data: {
+        blocks: fieldBlocks,
+        ungrouped: fieldsWithoutBlock,
+      },
+    });
+  } catch (error) {
+    console.error('Error fetching campaign fields:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch campaign fields',
+    });
+  }
+};
+
+/**
+ * GET /api/campaigns/:id/call-results
+ * Obtener todas las tipificaciones de una campaña
+ */
+export const getCampaignCallResults = async (req, res) => {
+  try {
+    const { companyId } = req.user;
+    const { id } = req.params;
+
+    // Verificar que la campaña pertenece a la empresa
+    const campaign = await prisma.campaigns.findFirst({
+      where: {
+        id: parseInt(id),
+        company_id: companyId,
+      },
+    });
+
+    if (!campaign) {
+      return res.status(404).json({
+        success: false,
+        error: 'Campaign not found',
+      });
+    }
+
+    // Obtener todos los tipos de resultados con sus resultados
+    const resultTypes = await prisma.result_types.findMany({
+      where: {
+        campaign_id: parseInt(id),
+      },
+      include: {
+        call_results: {
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            is_auto: true,
+            requires_reschedule: true,
+          },
+        },
+      },
+    });
+
+    res.json({
+      success: true,
+      data: resultTypes,
+    });
+  } catch (error) {
+    console.error('Error fetching campaign call results:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch campaign call results',
+    });
+  }
+};
+
+/**
+ * GET /api/campaigns/:id/summary
+ * Obtener resumen completo de la campaña con KPIs
+ */
+export const getCampaignSummary = async (req, res) => {
+  try {
+    const { companyId } = req.user;
+    const { id } = req.params;
+
+    // Verificar que la campaña pertenece a la empresa
+    const campaign = await prisma.campaigns.findFirst({
+      where: {
+        id: parseInt(id),
+        company_id: companyId,
+      },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        type: true,
+        start_date: true,
+        end_date: true,
+        target_sales: true,
+        status: true,
+        created_at: true,
+      },
+    });
+
+    if (!campaign) {
+      return res.status(404).json({
+        success: false,
+        error: 'Campaign not found',
+      });
+    }
+
+    // Contar leads asignados por estado
+    const leadsByStatus = await prisma.lead_campaign.groupBy({
+      by: ['status_id'],
+      where: {
+        campaign_id: parseInt(id),
+      },
+      _count: {
+        id: true,
+      },
+    });
+
+    // Obtener nombres de estados
+    const statusIds = leadsByStatus.map(item => item.status_id).filter(Boolean);
+    const statuses = await prisma.statuses.findMany({
+      where: {
+        id: { in: statusIds },
+      },
+      select: {
+        id: true,
+        name: true,
+        color: true,
+      },
+    });
+
+    const statusMap = Object.fromEntries(statuses.map(s => [s.id, s]));
+
+    const leadsByStatusWithNames = leadsByStatus.map(item => ({
+      status: item.status_id ? statusMap[item.status_id] : { id: null, name: 'Sin estado', color: '#gray' },
+      count: item._count.id,
+    }));
+
+    // Total de leads
+    const totalLeads = await prisma.lead_campaign.count({
+      where: { campaign_id: parseInt(id) },
+    });
+
+    // Total de llamadas
+    const totalCalls = await prisma.calls.count({
+      where: {
+        lead_campaign: {
+          campaign_id: parseInt(id),
+        },
+      },
+    });
+
+    // Total de ventas
+    const salesData = await prisma.sales.aggregate({
+      where: {
+        lead_campaign: {
+          campaign_id: parseInt(id),
+        },
+      },
+      _count: true,
+      _sum: {
+        amount: true,
+      },
+    });
+
+    // Ventas por estado
+    const salesByStatus = await prisma.sales.groupBy({
+      by: ['status'],
+      where: {
+        lead_campaign: {
+          campaign_id: parseInt(id),
+        },
+      },
+      _count: {
+        id: true,
+      },
+      _sum: {
+        amount: true,
+      },
+    });
+
+    // Agentes asignados
+    const agentsCount = await prisma.lead_campaign.groupBy({
+      by: ['assigned_agent'],
+      where: {
+        campaign_id: parseInt(id),
+        assigned_agent: { not: null },
+      },
+      _count: {
+        id: true,
+      },
+    });
+
+    // Top 5 agentes por ventas
+    const topAgents = await prisma.sales.groupBy({
+      by: ['agent_id'],
+      where: {
+        lead_campaign: {
+          campaign_id: parseInt(id),
+        },
+      },
+      _count: {
+        id: true,
+      },
+      _sum: {
+        amount: true,
+      },
+      orderBy: {
+        _count: {
+          id: 'desc',
+        },
+      },
+      take: 5,
+    });
+
+    // Obtener nombres de agentes
+    const agentIds = topAgents.map(item => item.agent_id);
+    const agents = await prisma.users.findMany({
+      where: {
+        id: { in: agentIds },
+      },
+      select: {
+        id: true,
+        name: true,
+      },
+    });
+
+    const agentMap = Object.fromEntries(agents.map(a => [a.id, a]));
+
+    const topAgentsWithNames = topAgents.map(item => ({
+      agent: agentMap[item.agent_id],
+      sales_count: item._count.id,
+      total_amount: item._sum.amount || 0,
+    }));
+
+    res.json({
+      success: true,
+      data: {
+        campaign,
+        metrics: {
+          total_leads: totalLeads,
+          total_calls: totalCalls,
+          total_sales: salesData._count,
+          total_revenue: salesData._sum.amount || 0,
+          agents_count: agentsCount.length,
+          conversion_rate: totalLeads > 0 ? ((salesData._count / totalLeads) * 100).toFixed(2) : 0,
+        },
+        leads_by_status: leadsByStatusWithNames,
+        sales_by_status: salesByStatus,
+        top_agents: topAgentsWithNames,
+      },
+    });
+  } catch (error) {
+    console.error('Error fetching campaign summary:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch campaign summary',
+    });
+  }
+};
+
+/**
+ * GET /api/campaigns/:id/agents
+ * Obtener todos los agentes asignados a la campaña
+ */
+export const getCampaignAgents = async (req, res) => {
+  try {
+    const { companyId } = req.user;
+    const { id } = req.params;
+
+    // Verificar que la campaña pertenece a la empresa
+    const campaign = await prisma.campaigns.findFirst({
+      where: {
+        id: parseInt(id),
+        company_id: companyId,
+      },
+    });
+
+    if (!campaign) {
+      return res.status(404).json({
+        success: false,
+        error: 'Campaign not found',
+      });
+    }
+
+    // Obtener usuarios asignados a la campaña
+    const campaignUsers = await prisma.campaign_users.findMany({
+      where: {
+        campaign_id: parseInt(id),
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true,
+            status: true,
+            role: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    res.json({
+      success: true,
+      data: campaignUsers.map(cu => ({
+        user: cu.user,
+        campaign_role: cu.campaign_role,
+        assigned_at: cu.assigned_at,
+      })),
+    });
+  } catch (error) {
+    console.error('Error fetching campaign agents:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch campaign agents',
     });
   }
 };

@@ -13,6 +13,9 @@ import {
   createCampaignStatus,
   getCampaignFields,
   createCampaignField,
+  getCampaignCallResults,
+  getCampaignSummary,
+  getCampaignAgents,
 } from '../controllers/campaigns.controller.js';
 import {
   validateCreateCampaign,
@@ -38,28 +41,54 @@ router.use(authenticate);
 router.get('/', getAllCampaigns);
 
 /**
- * GET /api/campaigns/:id
- * Obtener una campaña específica
- */
-router.get('/:id', getCampaignById);
-
-/**
  * POST /api/campaigns
  * Crear nueva campaña (requiere admin/supervisor)
  */
 router.post('/', requireAdminOrSupervisor, validateCreateCampaign, createCampaign);
 
-/**
- * PUT /api/campaigns/:id
- * Actualizar campaña (requiere admin/supervisor)
- */
-router.put('/:id', requireAdminOrSupervisor, validateUpdateCampaign, updateCampaign);
+// ==================== RUTAS HELPER (DEBEN IR ANTES DE /:id) ====================
 
 /**
- * DELETE /api/campaigns/:id
- * Eliminar campaña (requiere admin/supervisor)
+ * GET /api/campaigns/:id/summary
+ * Obtener resumen completo con KPIs de la campaña
  */
-router.delete('/:id', requireAdminOrSupervisor, deleteCampaign);
+router.get('/:id/summary', getCampaignSummary);
+
+/**
+ * GET /api/campaigns/:id/statuses
+ * Obtener todos los estados de la campaña
+ */
+router.get('/:id/statuses', getCampaignStatuses);
+
+/**
+ * POST /api/campaigns/:id/statuses
+ * Crear estado en la campaña (requiere admin/supervisor)
+ */
+router.post('/:id/statuses', requireAdminOrSupervisor, validateCreateStatus, createCampaignStatus);
+
+/**
+ * GET /api/campaigns/:id/fields
+ * Obtener todos los campos dinámicos de la campaña
+ */
+router.get('/:id/fields', getCampaignFields);
+
+/**
+ * POST /api/campaigns/:id/fields
+ * Crear campo personalizado (requiere admin/supervisor)
+ */
+router.post('/:id/fields', requireAdminOrSupervisor, validateCreateField, createCampaignField);
+
+/**
+ * GET /api/campaigns/:id/call-results
+ * Obtener todas las tipificaciones de la campaña
+ */
+router.get('/:id/call-results', getCampaignCallResults);
+
+/**
+ * GET /api/campaigns/:id/agents
+ * Obtener todos los agentes asignados a la campaña
+ */
+router.get('/:id/agents', getCampaignAgents);
 
 /**
  * GET /api/campaigns/:id/users
@@ -79,28 +108,24 @@ router.post('/:id/users', requireAdminOrSupervisor, validateAssignUser, assignUs
  */
 router.delete('/:id/users/:userId', requireAdminOrSupervisor, removeUserFromCampaign);
 
-/**
- * GET /api/campaigns/:id/statuses
- * Obtener estados de la campaña
- */
-router.get('/:id/statuses', getCampaignStatuses);
+// ==================== RUTAS GENERICAS (DEBEN IR AL FINAL) ====================
 
 /**
- * POST /api/campaigns/:id/statuses
- * Crear estado en la campaña (requiere admin/supervisor)
+ * GET /api/campaigns/:id
+ * Obtener una campaña específica
  */
-router.post('/:id/statuses', requireAdminOrSupervisor, validateCreateStatus, createCampaignStatus);
+router.get('/:id', getCampaignById);
 
 /**
- * GET /api/campaigns/:id/fields
- * Obtener campos personalizados de la campaña
+ * PUT /api/campaigns/:id
+ * Actualizar campaña (requiere admin/supervisor)
  */
-router.get('/:id/fields', getCampaignFields);
+router.put('/:id', requireAdminOrSupervisor, validateUpdateCampaign, updateCampaign);
 
 /**
- * POST /api/campaigns/:id/fields
- * Crear campo personalizado (requiere admin/supervisor)
+ * DELETE /api/campaigns/:id
+ * Eliminar campaña (requiere admin/supervisor)
  */
-router.post('/:id/fields', requireAdminOrSupervisor, validateCreateField, createCampaignField);
+router.delete('/:id', requireAdminOrSupervisor, deleteCampaign);
 
 export default router;
