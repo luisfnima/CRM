@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { NavLink } from "react-router-dom";
+import { useThemeStore } from '../../store/themeStore';
 import {
     LayoutDashboard,
     Users,
@@ -52,12 +53,39 @@ import {
 } from 'lucide-react'
 
 const Sidebar = ({ isOpen, setIsOpen }) => {
+    // Obtener colores del theme store
+    const { primaryColor, secondaryColor, companyName } = useThemeStore();
 
     const [expandedSections, setExpandedSections] = useState({});
     
+    // Función para determinar si un color es claro u oscuro
+    const isLightColor = (color) => {
+        // Convertir hex a RGB
+        const hex = color.replace('#', '');
+        const r = parseInt(hex.substr(0, 2), 16);
+        const g = parseInt(hex.substr(2, 2), 16);
+        const b = parseInt(hex.substr(4, 2), 16);
+        
+        // Calcular luminosidad
+        const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+        
+        return luminance > 0.5;
+    };
+    
+    // Determinar colores de texto basados en el fondo
+    const isLight = isLightColor(secondaryColor);
+    
+    // Colores dinámicos
+    const textPrimary = isLight ? '#1f2937' : '#f3f4f6';  // gray-800 : gray-100
+    const textSecondary = isLight ? '#4b5563' : '#d1d5db'; // gray-600 : gray-300
+    const textMuted = isLight ? '#6b7280' : '#9ca3af';     // gray-500 : gray-400
+    const hoverBg = isLight ? 'rgba(0, 0, 0, 0.05)' : 'rgba(255, 255, 255, 0.05)';
+    const activeBg = isLight ? 'rgba(0, 0, 0, 0.08)' : 'rgba(255, 255, 255, 0.1)';
+    const borderColor = isLight ? 'rgba(0, 0, 0, 0.1)' : 'rgba(255, 255, 255, 0.1)';
+    const iconBg = isLight ? 'rgba(0, 0, 0, 0.08)' : 'rgba(255, 255, 255, 0.1)';
+    
     const toggleSection = (sectionKey) => {
         setExpandedSections(prev => {
-            // Cerrar todas las secciones excepto la que se está abriendo
             const newState = {};
             if (!prev[sectionKey]) {
                 newState[sectionKey] = true;
@@ -78,7 +106,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                     icon: Clock,
                     subItems: [
                         { name: 'Horarios', icon: LayoutDashboard, path: '/company/attendance/schedules' },
-                        { name: 'Tipos de Conexión', icon: Wifi, path: '/company/attendance/disconection-types' },
+                        { name: 'Desconexiones', icon: Wifi, path: '/company/attendance/disconection-types' },
                         { name: 'Sede', icon: MapPin, path: '/company/attendance/branches' }
                     ]
                 },
@@ -191,54 +219,79 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                         className={`
                             group flex items-center w-full rounded-md
                             transition-all duration-200 ease-out
-                            text-gray-300 hover:text-white hover:bg-white/5
-                            ${isExpanded ? 'bg-white/5 text-white' : ''}
                             ${isOpen ? 'justify-between px-3 py-2.5' : 'justify-center py-2.5'}
                         `}
+                        style={{
+                            color: isExpanded ? textPrimary : textSecondary,
+                            backgroundColor: isExpanded ? activeBg : 'transparent',
+                            fontWeight: isExpanded ? '600' : '500'
+                        }}
+                        onMouseEnter={(e) => {
+                            if (!isExpanded) {
+                                e.currentTarget.style.backgroundColor = hoverBg;
+                                e.currentTarget.style.color = textPrimary;
+                            }
+                        }}
+                        onMouseLeave={(e) => {
+                            if (!isExpanded) {
+                                e.currentTarget.style.backgroundColor = 'transparent';
+                                e.currentTarget.style.color = textSecondary;
+                            }
+                        }}
                     >
                         <div className="flex items-center justify-center min-w-0">
-                            <div className={`
-                                flex items-center justify-center w-9 h-9 rounded-md flex-shrink-0
-                                transition-all duration-200
-                                ${isExpanded 
-                                    ? 'bg-red-600 text-white' 
-                                    : 'bg-gray-700 text-gray-400 group-hover:bg-gray-600 group-hover:text-red-400'
-                                }
-                            `}>
+                            <div 
+                                className="flex items-center justify-center w-9 h-9 rounded-md flex-shrink-0 transition-all duration-200"
+                                style={{
+                                    backgroundColor: isExpanded ? primaryColor : iconBg,
+                                    color: isExpanded ? '#ffffff' : textSecondary
+                                }}
+                            >
                                 <item.icon className="w-5 h-5" strokeWidth={2} />
                             </div>
                             {isOpen && (
-                                <span className="ml-3 text-sm font-medium text-left truncate">{item.name}</span>
+                                <span className="ml-3 text-sm text-left truncate">{item.name}</span>
                             )}
                         </div>
                         {isOpen && (
-                            <div className={`
-                                transition-transform duration-200 flex-shrink-0 ml-2
-                                ${isExpanded ? 'rotate-180' : ''}
-                            `}>
-                                <ChevronDown className="w-4 h-4 text-gray-500" strokeWidth={2} />
+                            <div className={`transition-transform duration-200 flex-shrink-0 ml-2 ${isExpanded ? 'rotate-180' : ''}`}>
+                                <ChevronDown className="w-4 h-4" strokeWidth={2} style={{ color: textMuted }} />
                             </div>
                         )}
                     </button>
 
-                    {/* Sub-items con animación */}
+                    {/* Sub-items */}
                     <div className={`
                         overflow-hidden transition-all duration-300 ease-out
                         ${isOpen && isExpanded ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'}
                     `}>
-                        <div className="ml-5 mt-1 pl-4 border-l-2 border-gray-700 space-y-0.5">
+                        <div 
+                            className="ml-5 mt-1 pl-4 border-l-2 space-y-0.5"
+                            style={{ borderColor: borderColor }}
+                        >
                             {item.subItems.map((subItem) => (
                                 <NavLink
                                     key={subItem.path}
                                     to={subItem.path}
-                                    className={({ isActive }) => `
-                                        group flex items-center px-3 py-2 rounded-md
-                                        transition-all duration-200
-                                        ${isActive
-                                            ? 'bg-red-600 text-white shadow-lg shadow-red-900/30'
-                                            : 'text-gray-400 hover:text-white hover:bg-white/5'
+                                    className="group flex items-center px-3 py-2 rounded-md transition-all duration-200"
+                                    style={({ isActive }) => ({
+                                        backgroundColor: isActive ? primaryColor : 'transparent',
+                                        color: isActive ? '#ffffff' : textSecondary
+                                    })}
+                                    onMouseEnter={(e) => {
+                                        const isActive = e.currentTarget.getAttribute('aria-current') === 'page';
+                                        if (!isActive) {
+                                            e.currentTarget.style.backgroundColor = hoverBg;
+                                            e.currentTarget.style.color = textPrimary;
                                         }
-                                    `}
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        const isActive = e.currentTarget.getAttribute('aria-current') === 'page';
+                                        if (!isActive) {
+                                            e.currentTarget.style.backgroundColor = 'transparent';
+                                            e.currentTarget.style.color = textSecondary;
+                                        }
+                                    }}
                                 >
                                     <div className="flex items-center justify-center w-4 h-4 flex-shrink-0 mr-2.5">
                                         <subItem.icon className="w-4 h-4" strokeWidth={2} />
@@ -257,27 +310,36 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
             <NavLink
                 key={item.path}
                 to={item.path}
-                className={({ isActive }) => `
-                    group flex items-center rounded-md mb-0.5
-                    transition-all duration-200 ease-out
-                    ${isActive
-                        ? 'bg-red-600 text-white shadow-lg shadow-red-900/30'
-                        : 'text-gray-300 hover:text-white hover:bg-white/5'
+                className={`group flex items-center rounded-md mb-0.5 transition-all duration-200 ease-out ${isOpen ? 'px-3 py-2.5' : 'justify-center py-2.5'}`}
+                style={({ isActive }) => ({
+                    backgroundColor: isActive ? primaryColor : 'transparent',
+                    color: isActive ? '#ffffff' : textSecondary
+                })}
+                onMouseEnter={(e) => {
+                    const isActive = e.currentTarget.getAttribute('aria-current') === 'page';
+                    if (!isActive) {
+                        e.currentTarget.style.backgroundColor = hoverBg;
+                        e.currentTarget.style.color = textPrimary;
                     }
-                    ${isOpen ? 'px-3 py-2.5' : 'justify-center py-2.5'}
-                `}
+                }}
+                onMouseLeave={(e) => {
+                    const isActive = e.currentTarget.getAttribute('aria-current') === 'page';
+                    if (!isActive) {
+                        e.currentTarget.style.backgroundColor = 'transparent';
+                        e.currentTarget.style.color = textSecondary;
+                    }
+                }}
             >
                 {({ isActive }) => (
                     <>
-                        <div className={`
-                            flex items-center justify-center w-9 h-9 rounded-md flex-shrink-0
-                            transition-all duration-200
-                            ${isActive
-                                ? 'bg-red-700'
-                                : 'bg-gray-700 text-gray-400 group-hover:bg-gray-600 group-hover:text-red-400'
-                            }
-                        `}>
-                            <item.icon className={`w-5 h-5 ${isActive ? 'text-white' : ''}`} strokeWidth={2} />
+                        <div 
+                            className="flex items-center justify-center w-9 h-9 rounded-md flex-shrink-0 transition-all duration-200"
+                            style={{
+                                backgroundColor: isActive ? `${primaryColor}dd` : iconBg,
+                                color: isActive ? '#ffffff' : textSecondary
+                            }}
+                        >
+                            <item.icon className="w-5 h-5" strokeWidth={2} />
                         </div>
                         {isOpen && (
                             <span className="ml-3 text-sm font-medium text-left truncate">{item.name}</span>
@@ -302,29 +364,55 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
             <aside
                 className={`
                     fixed lg:static inset-y-0 left-0 z-30
-                    bg-gray-900 border-r border-gray-800
+                    border-r
                     transition-all duration-300 ease-in-out
-                    shadow-2xl lg:shadow-none
+                    shadow-2xl lg:shadow-xl
                     ${isOpen ? 'w-72' : 'w-0 lg:w-20'}
                     overflow-hidden
                 `}
+                style={{ 
+                    backgroundColor: secondaryColor,
+                    borderColor: borderColor
+                }}
             >
                 <div className="flex flex-col h-full">
                     {/* Header / Logo */}
-                    <div className="flex items-center justify-center h-16 px-4 border-b border-gray-800 bg-gray-900">
+                    <div 
+                        className="flex items-center justify-center h-16 px-4 border-b"
+                        style={{ 
+                            borderColor: borderColor,
+                            backgroundColor: isLight ? 'rgba(0, 0, 0, 0.02)' : 'rgba(255, 255, 255, 0.02)'
+                        }}
+                    >
                         {isOpen ? (
                             <div className="flex items-center space-x-3 w-full">
-                                <div className="flex items-center justify-center w-10 h-10 bg-red-600 rounded-lg shadow-lg shadow-red-900/40 flex-shrink-0">
+                                <div 
+                                    className="flex items-center justify-center w-10 h-10 rounded-lg shadow-lg flex-shrink-0"
+                                    style={{ backgroundColor: primaryColor }}
+                                >
                                     <Building2 className="w-5 h-5 text-white" strokeWidth={2} />
                                 </div>
                                 <div className="flex flex-col min-w-0 flex-1">
-                                    <span className="text-lg font-bold text-white tracking-tight truncate">CRM DreamTeam</span>
-                                    <span className="text-xs text-gray-500 font-medium">Enterprise Suite</span>
+                                    <span 
+                                        className="text-lg font-bold tracking-tight truncate"
+                                        style={{ color: textPrimary }}
+                                    >
+                                        {companyName || 'CRM DreamTeam'}
+                                    </span>
+                                    <span 
+                                        className="text-xs font-medium"
+                                        style={{ color: textMuted }}
+                                    >
+                                        Enterprise Suite
+                                    </span>
                                 </div>
                             </div>
                         ) : (
                             <div className="flex items-center justify-center w-full">
-                                <div className="flex items-center justify-center w-10 h-10 bg-red-600 rounded-lg shadow-lg shadow-red-900/40">
+                                <div 
+                                    className="flex items-center justify-center w-10 h-10 rounded-lg shadow-lg"
+                                    style={{ backgroundColor: primaryColor }}
+                                >
                                     <Building2 className="w-5 h-5 text-white" strokeWidth={2} />
                                 </div>
                             </div>
@@ -332,16 +420,29 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                     </div>
 
                     {/* Navigation */}
-                    <nav className="flex-1 overflow-y-auto py-4 px-3 custom-scrollbar bg-gray-900">
+                    <nav className="flex-1 overflow-y-auto py-4 px-3 custom-scrollbar">
                         {menuItems.map((section, idx) => (
                             <div key={idx} className="mb-6">
                                 {isOpen && (
                                     <div className="flex items-center px-3 mb-3">
-                                        <div className="h-px flex-1 bg-gradient-to-r from-gray-700 to-transparent"></div>
-                                        <h3 className="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                                        <div 
+                                            className="h-px flex-1"
+                                            style={{ 
+                                                background: `linear-gradient(to right, ${borderColor}, transparent)` 
+                                            }}
+                                        ></div>
+                                        <h3 
+                                            className="px-3 text-xs font-semibold uppercase tracking-wider whitespace-nowrap"
+                                            style={{ color: textMuted }}
+                                        >
                                             {section.section}
                                         </h3>
-                                        <div className="h-px flex-1 bg-gradient-to-l from-gray-700 to-transparent"></div>
+                                        <div 
+                                            className="h-px flex-1"
+                                            style={{ 
+                                                background: `linear-gradient(to left, ${borderColor}, transparent)` 
+                                            }}
+                                        ></div>
                                     </div>
                                 )}
 
@@ -354,16 +455,22 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
 
                     {/* Footer */}
                     {isOpen && (
-                        <div className="p-4 border-t border-gray-800 bg-gray-900/50">
+                        <div 
+                            className="p-4 border-t"
+                            style={{ 
+                                borderColor: borderColor,
+                                backgroundColor: isLight ? 'rgba(0, 0, 0, 0.02)' : 'rgba(255, 255, 255, 0.02)'
+                            }}
+                        >
                             <div className="flex items-center space-x-3">
                                 <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse flex-shrink-0"></div>
-                                <span className="text-xs text-gray-500">Sistema Activo</span>
+                                <span className="text-xs" style={{ color: textMuted }}>Sistema Activo</span>
                             </div>
                         </div>
                     )}
 
                     {/* Estilos del scrollbar */}
-                    <style jsx>{`
+                    <style>{`
                         .custom-scrollbar::-webkit-scrollbar {
                             width: 6px;
                         }
@@ -373,17 +480,17 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                         }
                         
                         .custom-scrollbar::-webkit-scrollbar-thumb {
-                            background: #374151;
+                            background: ${isLight ? 'rgba(0, 0, 0, 0.15)' : 'rgba(255, 255, 255, 0.15)'};
                             border-radius: 10px;
                         }
                         
                         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-                            background: #4b5563;
+                            background: ${isLight ? 'rgba(0, 0, 0, 0.25)' : 'rgba(255, 255, 255, 0.25)'};
                         }
                         
                         .custom-scrollbar {
                             scrollbar-width: thin;
-                            scrollbar-color: #374151 transparent;
+                            scrollbar-color: ${isLight ? 'rgba(0, 0, 0, 0.15)' : 'rgba(255, 255, 255, 0.15)'} transparent;
                         }
                     `}</style>
                 </div>

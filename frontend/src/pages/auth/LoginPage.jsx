@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Building2, Mail, Lock, Eye, EyeOff, UserCircle } from "lucide-react";
 import { useAuthStore } from '../../store/authStore';
 import { useThemeStore } from '../../store/themeStore';
-import { authAPI } from '../../services/api';
+import { authService } from '../../services/authService';
 import toast from 'react-hot-toast';
 
 const LoginPage = () => {
@@ -21,17 +21,18 @@ const LoginPage = () => {
         setLoading(true)
 
         try {
-            const response = await authAPI.login(email, password);
+            // authService.login ya retorna response.data
+            const data = await authService.login(email, password);
 
             // Guardar datos en stores
-            login(response.data.user, response.data.token, response.data.company);
-            setTheme(response.data.company);
+            login(data.user, data.token, data.company);
+            setTheme(data.company);
 
             toast.success('¡Bienvenido de nuevo!');
             navigate('/');
         } catch (error) {
             console.error('Login error:', error);
-            const errorMessage = error.response?.data?.error || 'Error al iniciar sesión';
+            const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Error al iniciar sesión';
             toast.error(errorMessage);
         } finally {
             setLoading(false);
@@ -174,7 +175,7 @@ const LoginPage = () => {
                                         {showPassword ? (
                                             <EyeOff className="h-5 w-5" />
                                         ) : (
-                                            <Eye className="h-5 w-5" />
+                                            <Eye className="h-5 h-5" />
                                         )}
                                     </button>
                                 </div>
@@ -243,8 +244,8 @@ const LoginPage = () => {
                 </div>
             </div>
 
-            {/* Estilos para las animaciones */}
-            <style jsx>{`
+            {/* Estilos para las animaciones - SIN jsx */}
+            <style>{`
                 @keyframes blob {
                     0% { transform: translate(0px, 0px) scale(1); }
                     33% { transform: translate(30px, -50px) scale(1.1); }

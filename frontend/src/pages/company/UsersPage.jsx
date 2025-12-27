@@ -1,195 +1,371 @@
-import { useState } from "react";
-import { Plus, Search, Pencil, Trash2, UserCheck, UserX, Users, X, Eye, EyeOff, RefreshCw } from 'lucide-react'
+import { useState, useEffect } from "react";
+import { Plus, Search, Pencil, Trash2, Download, RefreshCw, Users, X, Eye, EyeOff, UserCheck, UserX, Key, Copy } from 'lucide-react';
+import { userService } from '../../services/userService';
+import { roleService } from '../../services/roleService';
+import { scheduleService } from '../../services/scheduleService';
 import toast from 'react-hot-toast';
+import * as XLSX from 'xlsx';
 
-// Modal Component (para agregar Y editar)
-const UserModal = ({ isOpen, onClose, onSubmit, editingUser }) => {
+// Modal para Crear/Editar Usuario
+const UserModal = ({ isOpen, onClose, onSave, editingUser, availableRoles, availableSchedules }) => {
     const [formData, setFormData] = useState({
-        fullName: editingUser?.name || '',
+        name: editingUser?.name || '',
         email: editingUser?.email || '',
-        role: editingUser?.role || '',
-        branch: editingUser?.branch || '',
         password: '',
-        phone: editingUser?.phone || ''
+        role_id: editingUser?.role_id || '',
+        schedule_id: editingUser?.schedule_id || '',
+        phone: editingUser?.phone || '',
+        photo_url: editingUser?.photo_url || '',
+        status: editingUser?.status || 'active'
     });
 
+    const [emailPrefix, setEmailPrefix] = useState('');
     const [showPassword, setShowPassword] = useState(false);
+    const DOMAIN = '@dreamteam.pe';
 
-    const generatePassword = () => {
-        const length = 12;
-        const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
-        let password = "";
-        for (let i = 0; i < length; i++) {
-            password += charset.charAt(Math.floor(Math.random() * charset.length));
+    // Actualizar emailPrefix cuando editingUser cambia
+    useEffect(() => {
+        if (editingUser?.email) {
+            const prefix = editingUser.email.split('@')[0];
+            setEmailPrefix(prefix);
+        } else {
+            setEmailPrefix('');
         }
-        setFormData({ ...formData, password });
+    }, [editingUser]);
+
+    // Generar contraseña segura
+    const generatePassword = () => {
+        const lowercase = 'abcdefghijklmnopqrstuvwxyz';
+        const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        const numbers = '0123456789';
+        const symbols = '!@#$%^&*';
+        const allChars = lowercase + uppercase + numbers + symbols;
+
+        let password = '';
+        
+        password += lowercase[Math.floor(Math.random() * lowercase.length)];
+        password += uppercase[Math.floor(Math.random() * uppercase.length)];
+        password += numbers[Math.floor(Math.random() * numbers.length)];
+        password += symbols[Math.floor(Math.random() * symbols.length)];
+
+        for (let i = password.length; i < 12; i++) {
+            password += allChars[Math.floor(Math.random() * allChars.length)];
+        }
+
+        password = password.split('').sort(() => Math.random() - 0.5).join('');
+
+        setFormData(prev => ({ ...prev, password }));
+        toast.success('Contraseña generada');
+    };
+
+    // Copiar contraseña al portapapeles
+    const copyPassword = async () => {
+        if (formData.password) {
+            try {
+                await navigator.clipboard.writeText(formData.password);
+                toast.success('Contraseña copiada al portapapeles');
+            } catch (error) {
+                toast.error('Error al copiar contraseña');
+            }
+        }
     };
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        onSubmit(formData);
-        setFormData({
-            fullName: '',
-            email: '',
-            role: '',
-            branch: '',
-            password: '',
-            phone: ''
+        
+        if (!formData.name.trim()) {
+            toast.error('El nombre es obligatorio');
+            return;
+        }
+
+        if (!emailPrefix.trim()) {
+            toast.error('El email es obligatorio');
+            return;
+        }
+
+        if (!editingUser && !formData.password) {
+            toast.error('La contraseña es obligatoria para usuarios nuevos');
+            return;
+        }
+
+        // Construir email completo
+        const fullEmail = emailPrefix + DOMAIN;
+
+        // Preparar datos para enviar
+        const dataToSend = { 
+            ...formData, 
+            email: fullEmail,
+            // Asegurar que los IDs sean números o strings (el service los convertirá)
+            role_id: formData.role_id || null,
+            schedule_id: formData.schedule_id || null,
+        };
+        
+        // Si es edición y no hay password, no enviarlo
+        if (editingUser && !formData.password) {
+            delete dataToSend.password;
+        }
+
+        onSave(dataToSend);
+        
+        // Limpiar formulario
+        setFormData({ 
+            name: '', 
+            email: '', 
+            password: '', 
+            role_id: '', 
+            schedule_id: '', 
+            phone: '', 
+            photo_url: '', 
+            status: 'active' 
         });
-        onClose();
+        setEmailPrefix('');
     };
 
     const handleChange = (e) => {
-        setFormData({
-            ...formData,
-            [e.target.name]: e.target.value
-        });
+        const { name, value } = e.target;
+        setFormData(prev => ({
+            ...prev,
+            [name]: value
+        }));
+    };
+
+    const handleEmailPrefixChange = (e) => {
+        const value = e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, '');
+        setEmailPrefix(value);
     };
 
     if (!isOpen) return null;
 
     return (
         <>
-            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 transition-opacity" onClick={onClose} />
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50" onClick={onClose} />
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden">
-                    <div className="bg-gradient-to-r from-red-600 to-red-700 px-6 py-4 flex items-center justify-between">
-                        <h2 className="text-xl font-bold text-white">
-                            {editingUser ? 'Editar Usuario' : 'Agregar Nuevo Usuario'}
-                        </h2>
-                        <button onClick={onClose} className="text-white hover:bg-white/20 rounded-lg p-2 transition-colors">
+                <div className="bg-white w-full max-w-2xl shadow-2xl max-h-[90vh] flex flex-col">
+                    <div className="bg-gray-900 text-white px-6 py-5 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-white/10 flex items-center justify-center">
+                                <Users className="w-5 h-5 text-white" />
+                            </div>
+                            <h2 className="text-lg font-semibold">
+                                {editingUser ? 'Editar Usuario' : 'Nuevo Usuario'}
+                            </h2>
+                        </div>
+                        <button onClick={onClose} className="hover:bg-white/10 p-2 transition-colors">
                             <X className="w-5 h-5" />
                         </button>
                     </div>
-                    <form onSubmit={handleSubmit} className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Nombre Completo <span className="text-red-600">*</span>
-                                </label>
-                                <input
-                                    type="text"
-                                    name="fullName"
-                                    value={formData.fullName}
-                                    onChange={handleChange}
-                                    required
-                                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
-                                    placeholder="Ej: Juan Pérez García"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Correo Electrónico <span className="text-red-600">*</span>
-                                </label>
-                                <input
-                                    type="email"
-                                    name="email"
-                                    value={formData.email}
-                                    onChange={handleChange}
-                                    required
-                                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
-                                    placeholder="ejemplo@correo.com"
-                                />
-                            </div>
+
+                    <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto">
+                        <div className="p-6 space-y-5">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {/* Nombre Completo */}
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Rol <span className="text-red-600">*</span>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                        Nombre Completo *
                                     </label>
-                                    <select
-                                        name="role"
-                                        value={formData.role}
+                                    <input
+                                        type="text"
+                                        name="name"
+                                        value={formData.name}
                                         onChange={handleChange}
+                                        className="w-full px-4 py-2.5 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent transition-all"
+                                        placeholder="Juan Pérez"
                                         required
-                                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
-                                    >
-                                        <option value="">Seleccionar rol</option>
-                                        <option value="Administrador">Administrador</option>
-                                        <option value="Supervisor">Supervisor</option>
-                                        <option value="Agente">Agente</option>
-                                        <option value="Back Office">Back Office</option>
-                                    </select>
+                                        maxLength={100}
+                                    />
                                 </div>
+
+                                {/* Email con dominio automático */}
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Sucursal <span className="text-red-600">*</span>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                        Email *
                                     </label>
-                                    <select
-                                        name="branch"
-                                        value={formData.branch}
-                                        onChange={handleChange}
-                                        required
-                                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
-                                    >
-                                        <option value="">Seleccionar sucursal</option>
-                                        <option value="Izaguirre">Izaguirre</option>
-                                        <option value="Huandoy">Huandoy</option>
-                                        <option value="Covida">Covida</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Contraseña {editingUser && <span className="text-gray-500 text-xs">(dejar en blanco para no cambiar)</span>} {!editingUser && <span className="text-red-600">*</span>}
-                                </label>
-                                <div className="flex gap-2">
-                                    <div className="relative flex-1">
+                                    <div className="relative">
                                         <input
-                                            type={showPassword ? "text" : "password"}
-                                            name="password"
-                                            value={formData.password}
-                                            onChange={handleChange}
-                                            required={!editingUser}
-                                            className="w-full px-4 py-2.5 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
-                                            placeholder={editingUser ? "Dejar en blanco para no cambiar" : "Ingrese contraseña"}
+                                            type="text"
+                                            value={emailPrefix}
+                                            onChange={handleEmailPrefixChange}
+                                            className="w-full px-4 py-2.5 pr-32 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent transition-all"
+                                            placeholder="usuario"
+                                            required
+                                            maxLength={50}
+                                            disabled={editingUser}
                                         />
+                                        <div className="absolute right-0 top-0 h-full flex items-center px-4 bg-gray-100 border-l border-gray-300 pointer-events-none">
+                                            <span className="text-sm text-gray-600 font-semibold">
+                                                {DOMAIN}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        Email final: <span className="font-semibold">{emailPrefix || 'usuario'}{DOMAIN}</span>
+                                    </p>
+                                </div>
+
+                                {/* Contraseña con generador */}
+                                <div className="md:col-span-2">
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                        Contraseña {!editingUser && '*'}
+                                    </label>
+                                    <div className="flex gap-2">
+                                        <div className="relative flex-1">
+                                            <input
+                                                type={showPassword ? 'text' : 'password'}
+                                                name="password"
+                                                value={formData.password}
+                                                onChange={handleChange}
+                                                className="w-full px-4 py-2.5 pr-24 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent transition-all font-mono"
+                                                placeholder={editingUser ? 'Dejar vacío para no cambiar' : 'Generar contraseña segura'}
+                                                required={!editingUser}
+                                                minLength={6}
+                                            />
+                                            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                                                {formData.password && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={copyPassword}
+                                                        className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                                                        title="Copiar contraseña"
+                                                    >
+                                                        <Copy className="w-4 h-4" />
+                                                    </button>
+                                                )}
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowPassword(!showPassword)}
+                                                    className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors"
+                                                    title={showPassword ? 'Ocultar' : 'Mostrar'}
+                                                >
+                                                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                                </button>
+                                            </div>
+                                        </div>
                                         <button
                                             type="button"
-                                            onClick={() => setShowPassword(!showPassword)}
-                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                                            onClick={generatePassword}
+                                            className="px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white font-semibold text-sm transition-all flex items-center gap-2 shadow-sm"
+                                            title="Generar contraseña segura"
                                         >
-                                            {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                            <Key className="w-4 h-4" />
+                                            Generar
                                         </button>
                                     </div>
-                                    <button
-                                        type="button"
-                                        onClick={generatePassword}
-                                        className="px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors flex items-center gap-2 font-medium whitespace-nowrap"
+                                    {formData.password && (
+                                        <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded">
+                                            <p className="text-xs text-blue-800">
+                                                <span className="font-semibold">💡 Importante:</span> Guarda esta contraseña, solo se mostrará una vez.
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Teléfono */}
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                        Teléfono
+                                    </label>
+                                    <input
+                                        type="tel"
+                                        name="phone"
+                                        value={formData.phone}
+                                        onChange={handleChange}
+                                        className="w-full px-4 py-2.5 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent transition-all"
+                                        placeholder="+51 999 999 999"
+                                        maxLength={20}
+                                    />
+                                </div>
+
+                                {/* Rol */}
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                        Rol *
+                                    </label>
+                                    <select
+                                        name="role_id"
+                                        value={formData.role_id}
+                                        onChange={handleChange}
+                                        className="w-full px-4 py-2.5 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent transition-all"
+                                        required
                                     >
-                                        <RefreshCw className="w-4 h-4" />
-                                        Generar
-                                    </button>
+                                        <option value="">Seleccionar rol</option>
+                                        {availableRoles.map(role => (
+                                            <option key={role.id} value={role.id}>
+                                                {role.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                {/* Horario */}
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                        Horario
+                                    </label>
+                                    <select
+                                        name="schedule_id"
+                                        value={formData.schedule_id}
+                                        onChange={handleChange}
+                                        className="w-full px-4 py-2.5 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent transition-all"
+                                    >
+                                        <option value="">Sin horario asignado</option>
+                                        {availableSchedules.map(schedule => (
+                                            <option key={schedule.id} value={schedule.id}>
+                                                {schedule.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                {/* Estado */}
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                        Estado
+                                    </label>
+                                    <select
+                                        name="status"
+                                        value={formData.status}
+                                        onChange={handleChange}
+                                        className="w-full px-4 py-2.5 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent transition-all"
+                                    >
+                                        <option value="active">Activo</option>
+                                        <option value="inactive">Inactivo</option>
+                                    </select>
+                                </div>
+
+                                {/* URL de Foto */}
+                                <div className="md:col-span-2">
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                        URL de Foto
+                                    </label>
+                                    <input
+                                        type="url"
+                                        name="photo_url"
+                                        value={formData.photo_url}
+                                        onChange={handleChange}
+                                        className="w-full px-4 py-2.5 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent transition-all"
+                                        placeholder="https://ejemplo.com/foto.jpg"
+                                        maxLength={500}
+                                    />
                                 </div>
                             </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Teléfono <span className="text-red-600">*</span>
-                                </label>
-                                <input
-                                    type="tel"
-                                    name="phone"
-                                    value={formData.phone}
-                                    onChange={handleChange}
-                                    required
-                                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
-                                    placeholder="999 999 999"
-                                />
-                            </div>
                         </div>
-                        <div className="flex gap-3 mt-6 pt-6 border-t border-gray-200">
-                            <button
-                                type="button"
-                                onClick={onClose}
-                                className="flex-1 px-4 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all font-semibold"
-                            >
-                                Cancelar
-                            </button>
-                            <button
-                                type="submit"
-                                className="flex-1 px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all font-semibold shadow-lg hover:shadow-xl"
-                            >
-                                {editingUser ? 'Guardar Cambios' : 'Crear Usuario'}
-                            </button>
+
+                        <div className="border-t border-gray-200 px-6 py-4 bg-gray-50">
+                            <div className="flex gap-3">
+                                <button
+                                    type="button"
+                                    onClick={onClose}
+                                    className="flex-1 px-4 py-2.5 border border-gray-300 hover:bg-gray-100 text-gray-700 font-semibold text-sm transition-all"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="flex-1 px-4 py-2.5 bg-gray-900 hover:bg-gray-800 text-white font-semibold text-sm transition-all"
+                                >
+                                    {editingUser ? 'Guardar Cambios' : 'Crear Usuario'}
+                                </button>
+                            </div>
                         </div>
                     </form>
                 </div>
@@ -198,259 +374,394 @@ const UserModal = ({ isOpen, onClose, onSubmit, editingUser }) => {
     );
 };
 
-// Main Component
 const UsersPage = () => {
     const [searchTerm, setSearchTerm] = useState('');
-    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [statusFilter, setStatusFilter] = useState('all');
+    const [modalOpen, setModalOpen] = useState(false);
     const [editingUser, setEditingUser] = useState(null);
-    const [users, setUsers] = useState([
-        {
-            id: 1,
-            name: 'Juan Pablo Segundo',
-            email: 'jsegundo@dreamteam.pe',
-            role: 'Administrador',
-            branch: 'Izaguirre',
-            phone: '999 999 999',
-            status: 'Activo',
-            lastSession: '2025-10-15 15:58'
-        },
-        {
-            id: 2,
-            name: 'Alejandro Mango',
-            email: 'amangop@dreamteam.pe',
-            role: 'Supervisores Reno JN',
-            branch: 'Huandoy',
-            phone: '999 999 888',
-            status: 'Activo',
-            lastSession: '2025-10-15 15:00'
-        },
-        {
-            id: 3,
-            name: 'Arnulfo Fonseca',
-            email: 'sperez@dreamteam.pe',
-            role: 'Agentes Covida',
-            branch: 'Covida',
-            phone: '999 999 777',
-            status: 'Inactivo',
-            lastSession: '2025-10-14 12:58'
-        },
-    ]);
+    const [loading, setLoading] = useState(true);
 
-    const filteredUsers = users.filter(user => 
-        user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.role.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    // Estados para datos del backend
+    const [users, setUsers] = useState([]);
+    const [availableRoles, setAvailableRoles] = useState([]);
+    const [availableSchedules, setAvailableSchedules] = useState([]);
 
-    const handleAddUser = (formData) => {
-        const newUser = {
-            id: users.length + 1,
-            name: formData.fullName,
-            email: formData.email,
-            role: formData.role,
-            branch: formData.branch,
-            phone: formData.phone,
-            status: 'Activo',
-            lastSession: new Date().toLocaleString('es-PE', { 
-                year: 'numeric', 
-                month: '2-digit', 
-                day: '2-digit', 
-                hour: '2-digit', 
-                minute: '2-digit' 
-            })
-        };
-        setUsers([...users, newUser]);
-        toast.success('Usuario creado correctamente');
-    };
+    // Cargar datos al montar el componente
+    useEffect(() => {
+        loadData();
+    }, []);
 
-    const handleEditUser = (formData) => {
-        setUsers(users.map(u => 
-            u.id === editingUser.id 
-                ? {
-                    ...u,
-                    name: formData.fullName,
-                    email: formData.email,
-                    role: formData.role,
-                    branch: formData.branch,
-                    phone: formData.phone
-                }
-                : u
-        ));
-        toast.success('Usuario actualizado correctamente');
-        setEditingUser(null);
-    };
+    const loadData = async () => {
+        try {
+            setLoading(true);
+            
+            // Cargar usuarios, roles y horarios en paralelo
+            const [usersData, rolesData, schedulesData] = await Promise.all([
+                userService.getAll(),
+                roleService.getAll(),
+                scheduleService.getAll()
+            ]);
 
-    const handleDelete = (id) => {
-        if(window.confirm('¿Estás seguro de querer eliminar al usuario?')){
-            setUsers(users.filter(u => u.id !== id));
-            toast.success('Usuario eliminado correctamente');
+            setUsers(usersData);
+            setAvailableRoles(rolesData);
+            setAvailableSchedules(schedulesData);
+            
+            toast.success('Datos cargados correctamente');
+        } catch (error) {
+            console.error('Error loading data:', error);
+            toast.error(error.response?.data?.error || 'Error al cargar los datos');
+        } finally {
+            setLoading(false);
         }
     };
 
-    const toggleStatus = (id) => {
-        setUsers(users.map(u =>
-            u.id === id
-            ? { ...u, status: u.status === 'Activo' ? 'Inactivo' : 'Activo' } : u 
-        ));
-        toast.success('Estado actualizado');
-    };
+    const filteredUsers = users.filter(user => {
+        const matchesSearch = 
+            user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            user.phone?.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesStatus = statusFilter === 'all' || user.status === statusFilter;
+        return matchesSearch && matchesStatus;
+    });
 
-    const openEditModal = (user) => {
+    const handleOpenModal = (user = null) => {
         setEditingUser(user);
-        setIsModalOpen(true);
+        setModalOpen(true);
     };
 
-    const openAddModal = () => {
+    const handleCloseModal = () => {
+        setModalOpen(false);
         setEditingUser(null);
-        setIsModalOpen(true);
     };
 
-    const closeModal = () => {
-        setIsModalOpen(false);
-        setEditingUser(null);
+    const handleSave = async (formData) => {
+        try {
+            if (editingUser) {
+                await userService.update(editingUser.id, formData);
+                toast.success('Usuario actualizado correctamente');
+            } else {
+                await userService.create(formData);
+                toast.success('Usuario creado correctamente');
+            }
+            
+            loadData(); // Recargar lista de usuarios
+            handleCloseModal();
+        } catch (error) {
+            console.error('Error saving user:', error);
+            toast.error(error.response?.data?.error || 'Error al guardar usuario');
+        }
     };
+
+    const handleDelete = async (id) => {
+        if (window.confirm('¿Estás seguro de eliminar este usuario?')) {
+            try {
+                await userService.delete(id);
+                toast.success('Usuario eliminado correctamente');
+                loadData();
+            } catch (error) {
+                console.error('Error deleting user:', error);
+                toast.error(error.response?.data?.error || 'Error al eliminar usuario');
+            }
+        }
+    };
+
+    const toggleStatus = async (id) => {
+        try {
+            await userService.toggleStatus(id);
+            toast.success('Estado actualizado');
+            loadData();
+        } catch (error) {
+            console.error('Error toggling status:', error);
+            toast.error(error.response?.data?.error || 'Error al cambiar estado');
+        }
+    };
+
+    const handleExport = () => {
+        try {
+            const dataToExport = filteredUsers.map(user => ({
+                'ID': user.id,
+                'Nombre': user.name,
+                'Email': user.email,
+                'Teléfono': user.phone || 'N/A',
+                'Rol': user.role?.name || 'N/A',
+                'Horario': user.schedule?.name || 'N/A',
+                'Estado': user.status === 'active' ? 'Activo' : 'Inactivo',
+                'Último Acceso': user.last_access ? new Date(user.last_access).toLocaleDateString('es-ES') : 'Nunca'
+            }));
+
+            const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, 'Usuarios');
+
+            worksheet['!cols'] = [
+                { wch: 10 }, { wch: 30 }, { wch: 30 }, { wch: 20 },
+                { wch: 20 }, { wch: 20 }, { wch: 15 }, { wch: 20 }
+            ];
+
+            const fecha = new Date().toISOString().split('T')[0];
+            XLSX.writeFile(workbook, `usuarios_${fecha}.xlsx`);
+
+            toast.success('Archivo exportado correctamente');
+        } catch (error) {
+            console.error('Export error:', error);
+            toast.error('Error al exportar');
+        }
+    };
+
+    const getRoleName = (roleId) => {
+        const role = availableRoles.find(r => r.id === roleId);
+        return role?.name || 'Sin rol';
+    };
+
+    const getScheduleName = (scheduleId) => {
+        const schedule = availableSchedules.find(s => s.id === scheduleId);
+        return schedule?.name || 'Sin horario';
+    };
+
+    if (loading) {
+        return (
+            <div className="flex justify-center items-center h-screen">
+                <div className="text-center">
+                    <div className="animate-spin w-12 h-12 border-4 border-gray-300 border-t-gray-800 rounded-full mx-auto mb-4"></div>
+                    <p className="text-gray-600 font-semibold">Cargando usuarios...</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
-    <div>
-      <div className="mb-6">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="p-2 bg-red-600 rounded-lg">
-            <Users className="w-6 h-6 text-white" />
-          </div>
-          <h1 className="text-3xl font-bold text-gray-800">
-            Gestión de Usuarios
-          </h1>
-        </div>
-        <p className="text-gray-600 ml-14">
-          Administra los usuarios del call center
-        </p>
-      </div>
+        <div className="flex justify-center py-8 bg-gray-50">
+            <div className="w-full max-w-7xl px-4">
+                
+                {/* Header */}
+                <div className="flex items-center gap-3 mb-6">
+                    <div className="flex items-center justify-center w-10 h-10 bg-gray-800 shadow-sm">
+                        <Users className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                        <h1 className="text-xl font-bold text-gray-800">
+                            Gestión de Usuarios
+                        </h1>
+                        <p className="text-xs text-gray-600">
+                            Administra los usuarios del sistema
+                        </p>
+                    </div>
+                </div>
 
-      <div className="bg-gradient-to-r from-white to-gray-50 rounded-xl shadow-md border border-gray-200 p-5 mb-6">
-        <div className="flex flex-col sm:flex-row justify-between items-center space-y-3 sm:space-y-0 sm:space-x-4">
-          <div className="relative flex-1 w-full sm:w-auto">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Buscar usuarios..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all bg-white"
+                {/* Barra de acciones */}
+                <div className="bg-white border border-gray-200 shadow-sm p-5 mb-6">
+                    <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center space-y-3 lg:space-y-0 gap-4">
+                        <div className="flex flex-col sm:flex-row gap-3 flex-1 w-full">
+                            {/* Search */}
+                            <div className="relative flex-1 max-w-md">
+                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                                <input
+                                    type="text"
+                                    placeholder="Buscar por nombre, email o teléfono..."
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    className="w-full pl-10 pr-4 py-2.5 border border-gray-300 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent transition-all"
+                                />
+                            </div>
+
+                            {/* Filtro de Estado */}
+                            <select
+                                value={statusFilter}
+                                onChange={(e) => setStatusFilter(e.target.value)}
+                                className="px-4 py-2.5 border border-gray-300 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent transition-all font-semibold"
+                            >
+                                <option value="all">Todos los Estados</option>
+                                <option value="active">Activos</option>
+                                <option value="inactive">Inactivos</option>
+                            </select>
+                        </div>
+
+                        {/* Action buttons */}
+                        <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
+                            <button 
+                                onClick={() => handleOpenModal()}
+                                className="flex items-center justify-center px-4 py-2.5 bg-gray-800 text-white hover:bg-gray-900 transition-all shadow-md hover:shadow-lg font-semibold text-sm"
+                            >
+                                <Plus className="w-4 h-4 mr-2" />
+                                Crear Usuario
+                            </button>
+                            
+                            <button 
+                                onClick={loadData}
+                                className="flex items-center justify-center px-4 py-2.5 bg-red-600 text-white hover:bg-red-700 transition-all shadow-md hover:shadow-lg font-semibold text-sm"
+                            >
+                                <RefreshCw className="w-4 h-4 mr-2" />
+                                Actualizar
+                            </button>
+                            
+                            <button 
+                                onClick={handleExport}
+                                className="flex items-center justify-center px-4 py-2.5 bg-gray-800 text-white hover:bg-gray-900 transition-all shadow-md hover:shadow-lg font-semibold text-sm"
+                            >
+                                <Download className="w-4 h-4 mr-2" />
+                                Exportar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Stats Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <div className="bg-gradient-to-br from-gray-800 to-gray-900 p-5 text-center shadow-lg">
+                        <Users className="w-6 h-6 text-white mx-auto mb-2" />
+                        <p className="text-xs text-gray-300 uppercase tracking-wider mb-1">Total Usuarios</p>
+                        <p className="text-2xl font-bold text-white">{users.length}</p>
+                    </div>
+                    
+                    <div className="bg-gradient-to-br from-emerald-500 to-green-600 p-5 text-center shadow-lg">
+                        <UserCheck className="w-6 h-6 text-white mx-auto mb-2" />
+                        <p className="text-xs text-emerald-100 uppercase tracking-wider mb-1">Activos</p>
+                        <p className="text-2xl font-bold text-white">
+                            {users.filter(u => u.status === 'active').length}
+                        </p>
+                    </div>
+                    
+                    <div className="bg-gradient-to-br from-red-600 to-red-700 p-5 text-center shadow-lg">
+                        <UserX className="w-6 h-6 text-white mx-auto mb-2" />
+                        <p className="text-xs text-red-100 uppercase tracking-wider mb-1">Inactivos</p>
+                        <p className="text-2xl font-bold text-white">
+                            {users.filter(u => u.status === 'inactive').length}
+                        </p>
+                    </div>
+                </div>
+
+                {/* Tabla */}
+                <div className="bg-white border border-gray-200 shadow-lg overflow-hidden">
+                    <div className="overflow-x-auto">
+                        <table className="w-full">
+                            <thead>
+                                <tr className="bg-gray-900">
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">
+                                        Usuario
+                                    </th>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">
+                                        Contacto
+                                    </th>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">
+                                        Rol
+                                    </th>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">
+                                        Horario
+                                    </th>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">
+                                        Estado
+                                    </th>
+                                    <th className="px-6 py-4 text-right text-xs font-bold text-white uppercase tracking-wider">
+                                        Acciones
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-200">
+                                {filteredUsers.map((user, index) => (
+                                    <tr key={user.id} className={`transition-all hover:bg-gray-50 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}`}>
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center">
+                                                <div className="w-10 h-10 bg-red-600 flex items-center justify-center mr-3 shadow-sm">
+                                                    <span className="text-white font-bold text-sm">
+                                                        {user.name?.charAt(0).toUpperCase()}
+                                                    </span>
+                                                </div>
+                                                <div>
+                                                    <div className="text-sm font-bold text-gray-900">
+                                                        {user.name}
+                                                    </div>
+                                                    <div className="text-xs text-gray-500">
+                                                        ID: {user.id}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="text-sm text-gray-900">{user.email}</div>
+                                            <div className="text-xs text-gray-500">{user.phone || 'Sin teléfono'}</div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <span className="inline-flex items-center px-2.5 py-1 text-xs font-bold bg-purple-100 text-purple-700 border border-purple-200">
+                                                {getRoleName(user.role_id)}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <span className="text-sm text-gray-700">
+                                                {getScheduleName(user.schedule_id)}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <button
+                                                onClick={() => toggleStatus(user.id)}
+                                                className={`inline-flex items-center px-3 py-1.5 text-xs font-bold shadow-sm transition-all ${
+                                                    user.status === 'active'
+                                                        ? 'bg-emerald-100 text-emerald-700 border border-emerald-200 hover:bg-emerald-200'
+                                                        : 'bg-red-100 text-red-700 border border-red-200 hover:bg-red-200'
+                                                }`}
+                                            >
+                                                {user.status === 'active' ? (
+                                                    <>
+                                                        <UserCheck className="w-3 h-3 mr-1" />
+                                                        Activo
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <UserX className="w-3 h-3 mr-1" />
+                                                        Inactivo
+                                                    </>
+                                                )}
+                                            </button>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center justify-end space-x-2">
+                                                <button 
+                                                    onClick={() => handleOpenModal(user)}
+                                                    className="p-2 bg-red-50 hover:bg-red-100 transition-colors border border-red-200"
+                                                    title="Editar"
+                                                >
+                                                    <Pencil className="w-4 h-4 text-red-600" />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDelete(user.id)}
+                                                    className="p-2 bg-gray-100 hover:bg-gray-200 transition-colors border border-gray-300"
+                                                    title="Eliminar"
+                                                >
+                                                    <Trash2 className="w-4 h-4 text-gray-800" />
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {filteredUsers.length === 0 && (
+                        <div className="text-center py-16 bg-gray-50">
+                            <div className="inline-flex items-center justify-center w-20 h-20 bg-white border-2 border-gray-200 mb-4 shadow-sm">
+                                <Search className="w-10 h-10 text-gray-400" />
+                            </div>
+                            <p className="text-gray-700 font-bold text-lg">No se encontraron usuarios</p>
+                            <p className="text-gray-500 text-sm mt-2">
+                                Intenta con otros términos de búsqueda o filtros
+                            </p>
+                        </div>
+                    )}
+                </div>
+
+            </div>
+
+            {/* Modal */}
+            <UserModal
+                isOpen={modalOpen}
+                onClose={handleCloseModal}
+                onSave={handleSave}
+                editingUser={editingUser}
+                availableRoles={availableRoles}
+                availableSchedules={availableSchedules}
             />
-          </div>
-          <button 
-            onClick={openAddModal}
-            className="w-full sm:w-auto flex items-center justify-center px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all shadow-md hover:shadow-lg font-semibold"
-          >
-            <Plus className="w-5 h-5 mr-2" />
-            Agregar Usuario
-          </button>
         </div>
-      </div>
-
-      <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-red-600">
-              <tr>
-                <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Usuario</th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Rol</th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Teléfono</th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Estado</th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Último acceso</th>
-                <th className="px-6 py-4 text-right text-xs font-bold text-white uppercase tracking-wider">Acciones</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {filteredUsers.map((user) => (
-                <tr key={user.id} className="hover:bg-red-50 transition-all">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
-                        <span className="text-red-700 font-bold">{user.name.charAt(0)}</span>
-                      </div>
-                      <div className="ml-4">
-                        <div className="text-sm font-semibold text-gray-900">{user.name}</div>
-                        <div className="text-sm text-gray-500">{user.email}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="px-3 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-700">{user.role}</span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 font-medium">{user.phone}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex items-center px-3 py-1.5 text-xs font-bold rounded-full shadow-sm ${
-                        user.status === 'Activo'
-                          ? 'bg-gradient-to-r from-emerald-400 to-green-500 text-white'
-                          : 'bg-gradient-to-r from-red-400 to-red-500 text-white'
-                      }`}>
-                      <span className="w-2 h-2 bg-white rounded-full mr-2"></span>
-                      {user.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 font-mono">{user.lastSession}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <div className="flex items-center justify-end space-x-2">
-                      <button onClick={() => toggleStatus(user.id)} className="p-2 rounded-lg hover:bg-orange-50 transition-colors group" title={user.status === 'Activo' ? 'Desactivar' : 'Activar'}>
-                        {user.status === 'Activo' ? <UserX className="w-4 h-4 text-orange-600 group-hover:text-orange-700" /> : <UserCheck className="w-4 h-4 text-emerald-600 group-hover:text-emerald-700" />}
-                      </button>
-                      <button 
-                        onClick={() => openEditModal(user)}
-                        className="p-2 rounded-lg hover:bg-red-50 transition-colors group"
-                        title="Editar usuario"
-                      >
-                        <Pencil className="w-4 h-4 text-red-600 group-hover:text-red-700" />
-                      </button>
-                      <button onClick={() => handleDelete(user.id)} className="p-2 rounded-lg hover:bg-red-50 transition-colors group" title="Eliminar usuario">
-                        <Trash2 className="w-4 h-4 text-red-600 group-hover:text-red-700" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        {filteredUsers.length === 0 && (
-          <div className="text-center py-16">
-            <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-red-100 mb-4">
-              <Search className="w-10 h-10 text-red-600" />
-            </div>
-            <p className="text-gray-700 font-semibold text-lg">No se encontraron usuarios</p>
-            <p className="text-gray-500 text-sm mt-1">Intenta con otros términos de búsqueda</p>
-          </div>
-        )}
-      </div>
-
-      <div className="mt-6 bg-gradient-to-r from-white to-gray-50 rounded-xl shadow-md border border-gray-200 p-4">
-        <div className="flex flex-col sm:flex-row items-center justify-between text-sm gap-3">
-          <div className="flex items-center space-x-2">
-            <Users className="w-5 h-5 text-red-600" />
-            <span className="font-semibold text-gray-700">Total: <span className="text-red-600">{filteredUsers.length}</span> de <span className="text-red-600">{users.length}</span> usuarios</span>
-          </div>
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-2">
-              <div className="w-3 h-3 rounded-full bg-gradient-to-r from-emerald-400 to-green-500"></div>
-              <span className="text-gray-600">Activos: <span className="font-bold text-gray-800">{users.filter(u => u.status === 'Activo').length}</span></span>
-            </div>
-            <span className="text-gray-400">•</span>
-            <div className="flex items-center space-x-2">
-              <div className="w-3 h-3 rounded-full bg-gradient-to-r from-red-400 to-red-500"></div>
-              <span className="text-gray-600">Inactivos: <span className="font-bold text-gray-800">{users.filter(u => u.status === 'Inactivo').length}</span></span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <UserModal 
-        isOpen={isModalOpen}
-        onClose={closeModal}
-        onSubmit={editingUser ? handleEditUser : handleAddUser}
-        editingUser={editingUser}
-      />
-    </div>
-  );
-}
+    );
+};
 
 export default UsersPage;
