@@ -10,7 +10,8 @@ import callsRoutes from './routes/calls.routes.js';
 import salesRoutes from './routes/sales.routes.js';
 import productsRoutes from './routes/products.routes.js';
 import leadCampaignRoutes from './routes/leadCampaign.routes.js';
-
+import roleRoutes from './routes/roles.routes.js';           // ⬅️ NUEVO
+import scheduleRoutes from './routes/schedules.routes.js';   // ⬅️ NUEVO
 
 dotenv.config();
 
@@ -18,39 +19,34 @@ const app = express();
 
 const PORT = process.env.PORT || 3001;
 
-//Middleware
+// ✅ CORS Configuration
 app.use(cors({
-    origin: process.env.ALLOWED_ORIGINS?.split(',') || 'https://localhost:5173',
-    credentials: true
+    origin: true,
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+    exposedHeaders: ['Content-Length', 'X-Request-Id']
 }));
 
 app.use(express.json());
 
 // --------Routes---------
-//base
 app.use('/api/auth', authRoutes);
 app.use('/api/vault', vaultRoutes);
 app.use('/api/users', usersRoutes);
-//campanas
+app.use('/api/roles', roleRoutes);                    // ⬅️ NUEVO
+app.use('/api/schedules', scheduleRoutes);            // ⬅️ NUEVO
 app.use('/api/campaigns', campaignsRoutes); 
-//leads
 app.use('/api/leads', leadsRoutes);
-//ventas y llamadas
 app.use('/api/calls', callsRoutes);
 app.use('/api/sales', salesRoutes);  
-// productos 
 app.use('/api/products', productsRoutes);
-// leads en campana
 app.use('/api/lead-campaign', leadCampaignRoutes);
 
-
-
-//health check
 app.get('/api/health', (req, res) => {
     res.json({status: 'ok', message: 'CRM API is running'});
 });
 
-//error handling
 app.use((err,req,res,next) => {
     console.error(err.stack);
     res.status(500).json({
@@ -60,6 +56,7 @@ app.use((err,req,res,next) => {
 });
 
 app.listen(PORT, () => {
-console.log(`Server running on port ${PORT}`);
-console.log(`Environment: ${process.env.NODE_ENV}`);
+    console.log(`Server running on port ${PORT}`);
+    console.log(`Environment: ${process.env.NODE_ENV}`);
+    console.log(`CORS enabled for all origins`);
 });

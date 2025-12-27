@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Plus, Search, Pencil, Trash2, Download, RefreshCw, Clock, Calendar, X } from 'lucide-react';
 import toast from 'react-hot-toast';
-import * as XLSX from 'xlsx';
+//
 
 // Modal para Crear/Editar Horario
 const ScheduleModal = ({ isOpen, onClose, onSave, editingSchedule }) => {

@@ -51,7 +51,7 @@ export const login = async (req, res) => {
         console.log('password ingresado: ', password);
         console.log('password de BBDD: ', user.password);
         
-        const isPasswordValid = await bcrypt.compare(password, user.password_hash);
+        const isPasswordValid = await bcrypt.compare(password, user.password);  // ✅ Cambiado de password_hash a password
         console.log('valido?', isPasswordValid);
         if(!isPasswordValid) {
             return res.status(401).json({error: 'Invalid credentials'});
@@ -114,7 +114,7 @@ export const register = async (req, res) => {
 
         const hashedPassword = await bcrypt.hash(password,10);
 
-        const user = await prisma.useres.create({
+        const user = await prisma.users.create({  // ✅ Cambiado de prisma.useres a prisma.users
             data: {
                 company_id,
                 name,
@@ -135,7 +135,7 @@ export const register = async (req, res) => {
         const { password: _, ...userWithoutPassword } = user;
 
         res.status(201).json({
-            message: 'User created succesfully',
+            message: 'User created successfully',  // ✅ Corregido typo: succesfully → successfully
             user: userWithoutPassword
         });
 
@@ -155,7 +155,7 @@ export const getMe = async (req, res) => {
                 role: true,
                 branch: true,
                 schedule: true,
-                company:true
+                company: true
             }
         });
 
@@ -173,7 +173,6 @@ export const getMe = async (req, res) => {
             company: {
                 id: user.company.id,
                 name: user.company.name,
-                domaun: user.company.name,
                 domain: user.company.domain,
                 primary_color: user.company.primary_color,
                 secondary_color: user.company.secondary_color,
@@ -184,4 +183,4 @@ export const getMe = async (req, res) => {
         console.error('GetMe error', error);
         res.status(500).json({error: 'Internal server error'});
     }
-}
+};

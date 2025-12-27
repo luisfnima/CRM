@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Plus, Search, Pencil, Trash2, Download, RefreshCw, Target, X, Eye, Calendar, Users, TrendingUp, PlayCircle, PauseCircle, CheckCircle, XCircle, FileText } from 'lucide-react';
 import toast from 'react-hot-toast';
-import * as XLSX from 'xlsx';
 
 // Modal para Crear/Editar Campaña
 const CampaignModal = ({ isOpen, onClose, onSave, editingCampaign, availableUsers }) => {

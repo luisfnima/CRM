@@ -3,6 +3,11 @@ import { Router } from 'express';
 import {
   createUser,
   resetPassword,
+  getAllUsers,
+  getUserById,
+  updateUser,
+  deleteUser,
+  toggleUserStatus,
 } from '../controllers/users.controller.js';
 import {
   authenticate,
@@ -15,10 +20,40 @@ const router = Router();
 router.use(authenticate);
 
 /**
+ * GET /api/users
+ * Obtener todos los usuarios
+ */
+router.get('/', getAllUsers);
+
+/**
+ * GET /api/users/:id
+ * Obtener usuario por ID
+ */
+router.get('/:id', getUserById);
+
+/**
  * POST /api/users
  * Crear nuevo usuario (requiere permisos de admin/supervisor)
  */
 router.post('/', requireAdminOrSupervisor, createUser);
+
+/**
+ * PUT /api/users/:id
+ * Actualizar usuario (requiere permisos de admin/supervisor)
+ */
+router.put('/:id', requireAdminOrSupervisor, updateUser);
+
+/**
+ * DELETE /api/users/:id
+ * Eliminar usuario (requiere permisos de admin/supervisor)
+ */
+router.delete('/:id', requireAdminOrSupervisor, deleteUser);
+
+/**
+ * PATCH /api/users/:id/toggle-status
+ * Cambiar estado del usuario (requiere permisos de admin/supervisor)
+ */
+router.patch('/:id/toggle-status', requireAdminOrSupervisor, toggleUserStatus);
 
 /**
  * POST /api/users/:userId/reset-password

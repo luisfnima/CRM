@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Plus, Search, Pencil, Trash2, Download, RefreshCw, Megaphone, X, AlertCircle, Calendar, User, Image as ImageIcon, Eye } from 'lucide-react';
 import toast from 'react-hot-toast';
-import * as XLSX from 'xlsx';
+//import * as XLSX from 'xlsx';
 
 // Modal para Crear/Editar Anuncio
 const AnnouncementModal = ({ isOpen, onClose, onSave, editingAnnouncement, availableUsers }) => {

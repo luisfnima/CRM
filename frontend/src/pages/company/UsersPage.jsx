@@ -1,7 +1,13 @@
 import { useState, useEffect } from "react";
 import { Plus, Search, Pencil, Trash2, Download, RefreshCw, Users, X, Eye, EyeOff, UserCheck, UserX, Key, Copy } from 'lucide-react';
 import toast from 'react-hot-toast';
-import * as XLSX from 'xlsx';
+//import * as XLSX from 'xlsx';
+
+
+// ⬇️ AGREGA ESTOS IMPORTS
+import userService from "../../services/userService";
+import roleService from "../../services/roleService";
+import scheduleService from "../../services/scheduleService";
 
 // Modal para Crear/Editar Usuario
 const UserModal = ({ isOpen, onClose, onSave, editingUser, availableRoles, availableSchedules }) => {
@@ -398,7 +404,13 @@ const UsersPage = () => {
                 roleService.getAll(),
                 scheduleService.getAll()
             ]);
-
+    
+            // ⬇️ AGREGAR ESTOS CONSOLE.LOG PARA DEBUGGEAR
+            console.log('📊 Usuarios recibidos:', usersData);
+            console.log('👥 Roles recibidos:', rolesData);
+            console.log('⏰ Schedules recibidos:', schedulesData);
+            console.log('📦 Tipo de usersData:', Array.isArray(usersData));
+    
             setUsers(usersData);
             setAvailableRoles(rolesData);
             setAvailableSchedules(schedulesData);
@@ -514,6 +526,8 @@ const UsersPage = () => {
         const schedule = availableSchedules.find(s => s.id === scheduleId);
         return schedule?.name || 'Sin horario';
     };
+
+    
 
     if (loading) {
         return (

@@ -7,6 +7,97 @@ import {
 } from '../lib/password-vault.js';
 
 /**
+ * GET /api/users
+ * Obtener todos los usuarios de la compañía
+ */
+export const getAllUsers = async (req, res) => {
+  try {
+    const companyId = req.user?.companyId;
+
+    console.log('🔍 Company ID:', companyId); // DEBUG
+
+    if (!companyId) {
+      return res.status(400).json({
+        error: 'Company ID is required',
+      });
+    }
+
+    const users = await prisma.users.findMany({
+      where: {
+        company_id: companyId,
+      },
+      include: {
+        role: true,
+        branch: true,
+        schedule: true,
+      },
+      orderBy: {
+        created_at: 'desc',
+      },
+    });
+
+    console.log('📊 Usuarios encontrados:', users.length); // DEBUG
+    console.log('👤 Primer usuario:', users[0]); // DEBUG
+
+    // Excluir password_hash de la respuesta
+    const usersWithoutPassword = users.map(({ password_hash, password, ...user }) => user);
+
+    console.log('✅ Enviando usuarios al frontend:', usersWithoutPassword); // DEBUG
+
+    return res.json(usersWithoutPassword);
+  } catch (error) {
+    console.error('Error fetching users:', error);
+    return res.status(500).json({
+      error: 'Internal server error',
+    });
+  }
+};
+
+/**
+ * GET /api/users/:id
+ * Obtener un usuario por ID
+ */
+export const getUserById = async (req, res) => {
+  try {
+    const userId = parseInt(req.params.id, 10);
+    const companyId = req.user?.companyId;
+
+    if (isNaN(userId)) {
+      return res.status(400).json({
+        error: 'Invalid user ID',
+      });
+    }
+
+    const user = await prisma.users.findFirst({
+      where: {
+        id: userId,
+        company_id: companyId,
+      },
+      include: {
+        role: true,
+        branch: true,
+        schedule: true,
+      },
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        error: 'User not found',
+      });
+    }
+
+    const { password_hash, password, ...userWithoutPassword } = user;
+
+    return res.json(userWithoutPassword);
+  } catch (error) {
+    console.error('Error fetching user:', error);
+    return res.status(500).json({
+      error: 'Internal server error',
+    });
+  }
+};
+
+/**
  * POST /api/users
  * Crea un nuevo usuario y guarda su password en el vault
  */
@@ -17,16 +108,25 @@ export const createUser = async (req, res) => {
       name,
       email,
       roleId,
+      role_id,
       branchId,
+      branch_id,
       scheduleId,
+      schedule_id,
       phone,
       password: providedPassword,
     } = req.body;
 
     const createdBy = req.user?.userId;
+    const finalCompanyId = companyId || req.user?.companyId;
+
+
+    const finalRoleId = (roleId || role_id) ? parseInt(roleId || role_id, 10) : null;
+    const finalBranchId = (branchId || branch_id) ? parseInt(branchId || branch_id, 10) : null;
+    const finalScheduleId = (scheduleId || schedule_id) ? parseInt(scheduleId || schedule_id, 10) : null;
 
     // Validación
-    if (!companyId || !name || !email || !createdBy) {
+    if (!finalCompanyId || !name || !email || !createdBy) {
       return res.status(400).json({
         error: 'Company ID, name, and email are required',
       });
@@ -36,7 +136,7 @@ export const createUser = async (req, res) => {
     const existingUser = await prisma.users.findUnique({
       where: {
         company_id_email: {
-          company_id: companyId,
+          company_id: finalCompanyId,
           email: email,
         },
       },
@@ -60,13 +160,13 @@ export const createUser = async (req, res) => {
     // Crear usuario
     const user = await prisma.users.create({
       data: {
-        company_id: companyId,
+        company_id: finalCompanyId,
         name,
         email,
-        password_hash: passwordHash,
-        role_id: roleId || null,
-        branch_id: branchId || null,
-        schedule_id: scheduleId || null,
+        password: passwordHash,
+        role_id: finalRoleId || null,
+        branch_id: finalBranchId || null,
+        schedule_id: finalScheduleId || null,
         phone: phone || null,
         status: 'active',
       },
@@ -104,10 +204,225 @@ export const createUser = async (req, res) => {
         name: user.name,
         email: user.email,
       },
-      password: plainPassword, // Mostrar solo una vez al crear
+      password: plainPassword,
     });
   } catch (error) {
     console.error('Error creating user:', error);
+    return res.status(500).json({
+      error: 'Internal server error',
+    });
+  }
+};
+
+/**
+ * PUT /api/users/:id
+ * Actualizar un usuario
+ */
+export const updateUser = async (req, res) => {
+  try {
+    const userId = parseInt(req.params.id, 10);
+    const {
+      name,
+      email,
+      password,
+      roleId,
+      role_id,
+      branchId,
+      branch_id,
+      scheduleId,
+      schedule_id,
+      phone,
+      photoUrl,
+      photo_url,
+      status,
+    } = req.body;
+    const updatedBy = req.user?.userId;
+
+    const finalRoleId = (roleId || role_id) ? parseInt(roleId || role_id, 10) : null;
+    const finalBranchId = (branchId || branch_id) ? parseInt(branchId || branch_id, 10) : null;
+    const finalScheduleId = (scheduleId || schedule_id) ? parseInt(scheduleId || schedule_id, 10) : null;
+    const finalPhotoUrl = photoUrl || photo_url;  // ⬅️ AGREGAR ESTA LÍNEA SI NO ESTÁ
+
+    
+    if (isNaN(userId)) {
+      return res.status(400).json({
+        error: 'Invalid user ID',
+      });
+    }
+
+    const existingUser = await prisma.users.findUnique({
+      where: { id: userId },
+    });
+
+    if (!existingUser) {
+      return res.status(404).json({
+        error: 'User not found',
+      });
+    }
+
+    const updateData = {
+      name,
+      email,
+      role_id: finalRoleId !== undefined ? finalRoleId : undefined,
+      branch_id: finalBranchId !== undefined ? finalBranchId : undefined,
+      schedule_id: finalScheduleId !== undefined ? finalScheduleId : undefined,
+      phone,
+      photo_url: finalPhotoUrl,
+      status,
+      updated_at: new Date(),
+    };
+
+    Object.keys(updateData).forEach(
+      (key) => updateData[key] === undefined && delete updateData[key]
+    );
+
+    if (password) {
+      const passwordHash = await hashPassword(password);
+      updateData.password = passwordHash;
+
+      const encryptedPassword = encryptPassword(password);
+      const vaultEntry = await prisma.password_vault.findUnique({
+        where: { user_id: userId },
+      });
+
+      if (vaultEntry) {
+        await prisma.password_vault.update({
+          where: { user_id: userId },
+          data: {
+            encrypted_password: encryptedPassword,
+            updated_at: new Date(),
+          },
+        });
+
+        await prisma.password_access_log.create({
+          data: {
+            vault_id: vaultEntry.id,
+            accessed_by: updatedBy,
+            action: 'update',
+            ip_address: req.ip || req.socket.remoteAddress || 'unknown',
+          },
+        });
+      }
+    }
+
+    const updatedUser = await prisma.users.update({
+      where: { id: userId },
+      data: updateData,
+      include: {
+        role: true,
+        branch: true,
+        schedule: true,
+      },
+    });
+
+    const { password_hash, password: _, ...userWithoutPassword } = updatedUser;
+
+    return res.json({
+      success: true,
+      user: userWithoutPassword,
+    });
+  } catch (error) {
+    console.error('Error updating user:', error);
+    return res.status(500).json({
+      error: 'Internal server error',
+    });
+  }
+};
+
+/**
+ * DELETE /api/users/:id
+ * Eliminar un usuario
+ */
+export const deleteUser = async (req, res) => {
+  try {
+    const userId = parseInt(req.params.id, 10);
+    const deletedBy = req.user?.userId;
+
+    if (isNaN(userId)) {
+      return res.status(400).json({
+        error: 'Invalid user ID',
+      });
+    }
+
+    const user = await prisma.users.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        error: 'User not found',
+      });
+    }
+
+    if (userId === deletedBy) {
+      return res.status(400).json({
+        error: 'Cannot delete your own user account',
+      });
+    }
+
+    await prisma.users.delete({
+      where: { id: userId },
+    });
+
+    return res.json({
+      success: true,
+      message: 'User deleted successfully',
+    });
+  } catch (error) {
+    console.error('Error deleting user:', error);
+    return res.status(500).json({
+      error: 'Internal server error',
+    });
+  }
+};
+
+/**
+ * PATCH /api/users/:id/toggle-status
+ * Cambiar estado activo/inactivo de un usuario
+ */
+export const toggleUserStatus = async (req, res) => {
+  try {
+    const userId = parseInt(req.params.id, 10);
+
+    if (isNaN(userId)) {
+      return res.status(400).json({
+        error: 'Invalid user ID',
+      });
+    }
+
+    const user = await prisma.users.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        error: 'User not found',
+      });
+    }
+
+    const newStatus = user.status === 'active' ? 'inactive' : 'active';
+
+    const updatedUser = await prisma.users.update({
+      where: { id: userId },
+      data: {
+        status: newStatus,
+        updated_at: new Date(),
+      },
+      include: {
+        role: true,
+        branch: true,
+        schedule: true,
+      },
+    });
+
+    const { password_hash, password, ...userWithoutPassword } = updatedUser;
+
+    return res.json({
+      success: true,
+      user: userWithoutPassword,
+    });
+  } catch (error) {
+    console.error('Error toggling user status:', error);
     return res.status(500).json({
       error: 'Internal server error',
     });
@@ -124,7 +439,6 @@ export const resetPassword = async (req, res) => {
     const { newPassword } = req.body;
     const resetBy = req.user?.userId;
 
-    // Validación
     if (!resetBy) {
       return res.status(401).json({
         error: 'Authentication required',
@@ -137,7 +451,6 @@ export const resetPassword = async (req, res) => {
       });
     }
 
-    // Verificar que el usuario existe
     const user = await prisma.users.findUnique({
       where: { id: userId },
     });
@@ -148,25 +461,18 @@ export const resetPassword = async (req, res) => {
       });
     }
 
-    // Generar nueva password si no se proporcionó
     const plainPassword = newPassword || generateSecurePassword(12);
-
-    // Hash para login
     const passwordHash = await hashPassword(plainPassword);
-
-    // Encriptar para vault
     const encryptedPassword = encryptPassword(plainPassword);
 
-    // Actualizar usuario
     await prisma.users.update({
       where: { id: userId },
       data: {
-        password_hash: passwordHash,
+        password: passwordHash,
         updated_at: new Date(),
       },
     });
 
-    // Actualizar vault
     const vaultEntry = await prisma.password_vault.findUnique({
       where: { user_id: userId },
     });
@@ -180,7 +486,6 @@ export const resetPassword = async (req, res) => {
         },
       });
 
-      // Registrar en log
       await prisma.password_access_log.create({
         data: {
           vault_id: vaultEntry.id,
@@ -190,7 +495,6 @@ export const resetPassword = async (req, res) => {
         },
       });
     } else {
-      // Si no existe entrada en vault, crearla
       const newVaultEntry = await prisma.password_vault.create({
         data: {
           user_id: userId,
@@ -216,7 +520,7 @@ export const resetPassword = async (req, res) => {
         name: user.name,
         email: user.email,
       },
-      password: plainPassword, // Mostrar solo una vez
+      password: plainPassword,
     });
   } catch (error) {
     console.error('Error resetting password:', error);

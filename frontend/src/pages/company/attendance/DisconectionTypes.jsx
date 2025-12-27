@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Plus, Search, Pencil, Trash2, Download, RefreshCw, WifiOff, X } from 'lucide-react';
 import toast from 'react-hot-toast';
-import * as XLSX from 'xlsx';
+//import * as XLSX from 'xlsx';
 
 // Modal para Crear/Editar Tipo de Desconexión
 const DisconnectionTypeModal = ({ isOpen, onClose, onSave, editingType }) => {

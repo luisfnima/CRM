@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Search, Clock, Download, RefreshCw, Calendar, User, Coffee, Play, Square, Eye, X, Filter, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
-import * as XLSX from 'xlsx';
+//import * as XLSX from 'xlsx';
 
 // Modal de Filtros Avanzados
 const FilterModal = ({ isOpen, onClose, onApply, availableUsers }) => {

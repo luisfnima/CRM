@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Plus, Search, Pencil, Trash2, Download, RefreshCw, MessageSquare, X, Image as ImageIcon, Calendar, User, Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
-import * as XLSX from 'xlsx';
+//import * as XLSX from 'xlsx';
 
 // Modal para Crear/Editar Popup
 const PopupModal = ({ isOpen, onClose, onSave, editingPopup, availableUsers }) => {
