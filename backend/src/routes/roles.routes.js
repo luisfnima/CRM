@@ -1,37 +1,55 @@
 // src/routes/roles.routes.js
+// CREAR ESTE ARCHIVO NUEVO
 import { Router } from 'express';
-import { prisma } from '../lib/prisma.js';
-import { authenticate } from '../middleware/auth.middleware.js';
+import {
+  getAllRoles,
+  getRoleById,
+  createRole,
+  updateRole,
+  deleteRole,
+} from '../controllers/roles.controller.js';
+import {
+  validateCreateRole,
+  validateUpdateRole,
+} from '../validators/roles.validator.js';
+import {
+  authenticate,
+  requireAdminOrSupervisor,
+} from '../middleware/auth.middleware.js';
 
 const router = Router();
 
+// Todas las rutas requieren autenticación
 router.use(authenticate);
 
-router.get('/', async (req, res) => {
-  try {
-    const companyId = req.user?.companyId;
+/**
+ * GET /api/roles
+ * Listar todos los roles
+ */
+router.get('/', getAllRoles);
 
-    if (!companyId) {
-      return res.status(400).json({
-        error: 'Company ID is required',
-      });
-    }
+/**
+ * GET /api/roles/:id
+ * Obtener un rol específico
+ */
+router.get('/:id', getRoleById);
 
-    const roles = await prisma.roles.findMany({
-      where: {
-        company_id: companyId,
-        active: true,
-      },
-      orderBy: {
-        name: 'asc',
-      },
-    });
+/**
+ * POST /api/roles
+ * Crear nuevo rol (requiere admin/supervisor)
+ */
+router.post('/', requireAdminOrSupervisor, validateCreateRole, createRole);
 
-    res.json(roles);
-  } catch (error) {
-    console.error('Error fetching roles:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
+/**
+ * PUT /api/roles/:id
+ * Actualizar rol (requiere admin/supervisor)
+ */
+router.put('/:id', requireAdminOrSupervisor, validateUpdateRole, updateRole);
+
+/**
+ * DELETE /api/roles/:id
+ * Eliminar rol (requiere admin/supervisor)
+ */
+router.delete('/:id', requireAdminOrSupervisor, deleteRole);
 
 export default router;
