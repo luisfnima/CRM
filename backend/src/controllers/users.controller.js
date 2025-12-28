@@ -101,118 +101,145 @@ export const getUserById = async (req, res) => {
  * POST /api/users
  * Crea un nuevo usuario y guarda su password en el vault
  */
+
 export const createUser = async (req, res) => {
-  try {
-    const {
-      companyId,
-      name,
-      email,
-      roleId,
-      role_id,
-      branchId,
-      branch_id,
-      scheduleId,
-      schedule_id,
-      phone,
-      password: providedPassword,
-    } = req.body;
-
-    const createdBy = req.user?.userId;
-    const finalCompanyId = companyId || req.user?.companyId;
-
-
-    const finalRoleId = (roleId || role_id) ? parseInt(roleId || role_id, 10) : null;
-    const finalBranchId = (branchId || branch_id) ? parseInt(branchId || branch_id, 10) : null;
-    const finalScheduleId = (scheduleId || schedule_id) ? parseInt(scheduleId || schedule_id, 10) : null;
-
-    // Validación
-    if (!finalCompanyId || !name || !email || !createdBy) {
-      return res.status(400).json({
-        error: 'Company ID, name, and email are required',
-      });
-    }
-
-    // Verificar que el email no exista
-    const existingUser = await prisma.users.findUnique({
-      where: {
-        company_id_email: {
-          company_id: finalCompanyId,
-          email: email,
-        },
-      },
-    });
-
-    if (existingUser) {
-      return res.status(409).json({
-        error: 'Email already exists',
-      });
-    }
-
-    // Generar password si no se proporcionó
-    const plainPassword = providedPassword || generateSecurePassword(12);
-
-    // Hash para login
-    const passwordHash = await hashPassword(plainPassword);
-
-    // Encriptar para vault
-    const encryptedPassword = encryptPassword(plainPassword);
-
-    // Crear usuario
-    const user = await prisma.users.create({
-      data: {
-        company_id: finalCompanyId,
+    try {
+      console.log('═══════════════════════════════════════');
+  
+      const {
+        companyId,
         name,
         email,
-        password: passwordHash,
-        role_id: finalRoleId || null,
-        branch_id: finalBranchId || null,
-        schedule_id: finalScheduleId || null,
-        phone: phone || null,
-        status: 'active',
-      },
-    });
+        roleId,
+        role_id,
+        branchId,
+        branch_id,
+        scheduleId,
+        schedule_id,
+        phone,
+        photo_url,
+        password: providedPassword,
+      } = req.body;
 
-    // Guardar en vault
-    await prisma.password_vault.create({
-      data: {
-        user_id: user.id,
-        encrypted_password: encryptedPassword,
-        created_by: createdBy,
-      },
-    });
-
-    // Registrar en log
-    const vaultEntry = await prisma.password_vault.findUnique({
-      where: { user_id: user.id },
-    });
-
-    if (vaultEntry) {
-      await prisma.password_access_log.create({
-        data: {
-          vault_id: vaultEntry.id,
-          accessed_by: createdBy,
-          action: 'create',
-          ip_address: req.ip || req.socket.remoteAddress || 'unknown',
+      // ⬇️ EXTRAER SOLO EL PREFIJO DEL EMAIL (sin el dominio)
+      const emailPrefix = email.includes('@') ? email.split('@')[0] : email;
+      console.log('📧 Email recibido:', email);
+      console.log('📧 Email a guardar (solo prefijo):', emailPrefix);
+  
+      console.log('📸 photo_url recibido:', photo_url);
+  
+      const createdBy = req.user?.userId;
+      const finalCompanyId = companyId || req.user?.companyId;
+  
+      const finalRoleId = (roleId || role_id) ? parseInt(roleId || role_id, 10) : null;
+      const finalBranchId = (branchId || branch_id) ? parseInt(branchId || branch_id, 10) : null;
+      const finalScheduleId = (scheduleId || schedule_id) ? parseInt(scheduleId || schedule_id, 10) : null;
+  
+      // Validación
+      if (!finalCompanyId || !name || !email || !createdBy) {
+        return res.status(400).json({
+          error: 'Company ID, name, and email are required',
+        });
+      }
+  
+      // Verificar que el email no exista
+      const existingUser = await prisma.users.findUnique({
+        where: {
+          company_id_email: {
+            company_id: finalCompanyId,
+            email: emailPrefix,  // ⬅️ Cambiar aquí
+          },
         },
       });
+  
+      if (existingUser) {
+        return res.status(409).json({
+          error: 'Email already exists',
+        });
+      }
+  
+      const plainPassword = providedPassword || generateSecurePassword(12);
+      const passwordHash = await hashPassword(plainPassword);
+      const encryptedPassword = encryptPassword(plainPassword);
+  
+      // Crear usuario SIN photo_url (workaround por bug de Prisma)
+      let user = await prisma.users.create({
+        data: {
+          company_id: finalCompanyId,
+          name,
+          email: emailPrefix,
+          password: passwordHash,
+          role_id: finalRoleId || null,
+          branch_id: finalBranchId || null,
+          schedule_id: finalScheduleId || null,
+          phone: phone || null,
+          status: 'active',
+        },
+      });
+  
+      console.log('✅ Usuario creado (sin foto):', user.id);
+  
+      // Si hay photo_url, actualizarlo inmediatamente
+      if (photo_url) {
+        console.log('📸 Actualizando photo_url...');
+        
+        await prisma.users.update({
+          where: { id: user.id },
+          data: { photo_url: photo_url },
+        });
+  
+        // Refrescar el objeto user con el photo_url actualizado
+        user = await prisma.users.findUnique({
+          where: { id: user.id },
+        });
+  
+        console.log('✅ Photo URL actualizado:', user.photo_url);
+      }
+  
+      // Guardar en vault
+      await prisma.password_vault.create({
+        data: {
+          user_id: user.id,
+          encrypted_password: encryptedPassword,
+          created_by: createdBy,
+        },
+      });
+  
+      // Registrar en log
+      const vaultEntry = await prisma.password_vault.findUnique({
+        where: { user_id: user.id },
+      });
+  
+      if (vaultEntry) {
+        await prisma.password_access_log.create({
+          data: {
+            vault_id: vaultEntry.id,
+            accessed_by: createdBy,
+            action: 'create',
+            ip_address: req.ip || req.socket.remoteAddress || 'unknown',
+          },
+        });
+      }
+  
+      console.log('═══════════════════════════════════════');
+  
+      return res.status(201).json({
+        success: true,
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          photo_url: user.photo_url,
+        },
+        password: plainPassword,
+      });
+    } catch (error) {
+      console.error('❌ ERROR CREATING USER:', error);
+      return res.status(500).json({
+        error: 'Internal server error',
+      });
     }
-
-    return res.status(201).json({
-      success: true,
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-      },
-      password: plainPassword,
-    });
-  } catch (error) {
-    console.error('Error creating user:', error);
-    return res.status(500).json({
-      error: 'Internal server error',
-    });
-  }
-};
+  };
 
 /**
  * PUT /api/users/:id
@@ -236,6 +263,12 @@ export const updateUser = async (req, res) => {
       photo_url,
       status,
     } = req.body;
+
+
+    const emailPrefix = email && email.includes('@') ? email.split('@')[0] : email;
+
+    console.log('📸 Photo URL recibida en backend:', photo_url); // ⬅️ AGREGAR
+
     const updatedBy = req.user?.userId;
 
     const finalRoleId = (roleId || role_id) ? parseInt(roleId || role_id, 10) : null;
@@ -243,7 +276,7 @@ export const updateUser = async (req, res) => {
     const finalScheduleId = (scheduleId || schedule_id) ? parseInt(scheduleId || schedule_id, 10) : null;
     const finalPhotoUrl = photoUrl || photo_url;  // ⬅️ AGREGAR ESTA LÍNEA SI NO ESTÁ
 
-    
+
     if (isNaN(userId)) {
       return res.status(400).json({
         error: 'Invalid user ID',
@@ -262,7 +295,7 @@ export const updateUser = async (req, res) => {
 
     const updateData = {
       name,
-      email,
+      email: emailPrefix,
       role_id: finalRoleId !== undefined ? finalRoleId : undefined,
       branch_id: finalBranchId !== undefined ? finalBranchId : undefined,
       schedule_id: finalScheduleId !== undefined ? finalScheduleId : undefined,

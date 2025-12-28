@@ -6,6 +6,7 @@ import vaultRoutes from './routes/vault.routes.js';
 import usersRoutes from './routes/users.routes.js';
 import campaignsRoutes from './routes/campaigns.routes.js';
 import leadsRoutes from './routes/leads.routes.js';
+import branchRoutes from './routes/branches.routes.js';
 import callsRoutes from './routes/calls.routes.js';
 import salesRoutes from './routes/sales.routes.js';
 import productsRoutes from './routes/products.routes.js';
@@ -54,6 +55,8 @@ app.use((err,req,res,next) => {
         message: process.env.NODE_ENV === 'development' ? err.message: undefined
     });
 });
+
+app.use('/api/branches', branchRoutes);
 
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);

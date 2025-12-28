@@ -1,40 +1,107 @@
 import { useState, useEffect } from "react";
-import { Plus, Search, Pencil, Trash2, Download, RefreshCw, Users, X, Eye, EyeOff, UserCheck, UserX, Key, Copy } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, Download, RefreshCw, Users, X, Eye, EyeOff, UserCheck, UserX, Key, Copy, Upload } from 'lucide-react';
 import toast from 'react-hot-toast';
 //import * as XLSX from 'xlsx';
 
-
-// ⬇️ AGREGA ESTOS IMPORTS
 import userService from "../../services/userService";
 import roleService from "../../services/roleService";
 import scheduleService from "../../services/scheduleService";
+import branchService from "../../services/branchService";
+import uploadService from "../../services/uploadService";
 
 // Modal para Crear/Editar Usuario
-const UserModal = ({ isOpen, onClose, onSave, editingUser, availableRoles, availableSchedules }) => {
+const UserModal = ({ isOpen, onClose, onSave, editingUser, availableRoles, availableSchedules, availableBranches }) => {
     const [formData, setFormData] = useState({
-        name: editingUser?.name || '',
-        email: editingUser?.email || '',
+        firstName: '',
+        lastName: '',
         password: '',
-        role_id: editingUser?.role_id || '',
-        schedule_id: editingUser?.schedule_id || '',
-        phone: editingUser?.phone || '',
-        photo_url: editingUser?.photo_url || '',
-        status: editingUser?.status || 'active'
+        role_id: '',
+        branch_id: '',
+        schedule_id: '',
+        phone: '',
+        photo_url: '',
     });
 
-    const [emailPrefix, setEmailPrefix] = useState('');
+    const [generatedEmail, setGeneratedEmail] = useState('');
     const [showPassword, setShowPassword] = useState(false);
+    const [uploadingImage, setUploadingImage] = useState(false);
     const DOMAIN = '@dreamteam.pe';
 
-    // Actualizar emailPrefix cuando editingUser cambia
+    // Cargar datos cuando se edita un usuario
     useEffect(() => {
-        if (editingUser?.email) {
-            const prefix = editingUser.email.split('@')[0];
-            setEmailPrefix(prefix);
+        if (editingUser) {
+            const nameParts = editingUser.name?.split(' ') || ['', ''];
+            setFormData({
+                firstName: nameParts[0] || '',
+                lastName: nameParts.slice(1).join(' ') || '',
+                password: '',
+                role_id: editingUser.role_id || '',
+                branch_id: editingUser.branch_id || '',
+                schedule_id: editingUser.schedule_id || '',
+                phone: editingUser.phone || '',
+                photo_url: editingUser.photo_url || '',
+            });
         } else {
-            setEmailPrefix('');
+            // Limpiar form al crear nuevo usuario
+            setFormData({
+                firstName: '',
+                lastName: '',
+                password: '',
+                role_id: '',
+                branch_id: '',
+                schedule_id: '',
+                phone: '',
+                photo_url: '',
+            });
         }
     }, [editingUser]);
+
+    // Generar email automáticamente
+    useEffect(() => {
+        if (formData.firstName && formData.lastName) {
+            const firstLetter = formData.firstName.charAt(0).toLowerCase();
+            const lastName = formData.lastName.toLowerCase().replace(/\s+/g, '');
+            setGeneratedEmail(`${firstLetter}${lastName}`);
+        } else {
+            setGeneratedEmail('');
+        }
+    }, [formData.firstName, formData.lastName]);
+
+    // Subir imagen a Cloudinary
+
+     const handleImageUpload = async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+        
+            if (!file.type.startsWith('image/')) {
+                toast.error('Por favor selecciona una imagen válida');
+                return;
+            }
+        
+            if (file.size > 5 * 1024 * 1024) {
+                toast.error('La imagen no debe superar 5MB');
+                return;
+            }
+        
+            try {
+                setUploadingImage(true);
+                const imageUrl = await uploadService.uploadImage(file);
+                
+                console.log('🖼️ URL de imagen generada:', imageUrl); // ⬅️ AGREGAR
+                
+                setFormData(prev => ({ ...prev, photo_url: imageUrl }));
+                
+                console.log('📋 FormData actualizado:', { ...formData, photo_url: imageUrl }); // ⬅️ AGREGAR
+                
+                toast.success('Imagen subida correctamente');
+            } catch (error) {
+                console.error('Error uploading image:', error);
+                toast.error('Error al subir la imagen');
+            } finally {
+                setUploadingImage(false);
+            }
+        };
+
 
     // Generar contraseña segura
     const generatePassword = () => {
@@ -61,7 +128,6 @@ const UserModal = ({ isOpen, onClose, onSave, editingUser, availableRoles, avail
         toast.success('Contraseña generada');
     };
 
-    // Copiar contraseña al portapapeles
     const copyPassword = async () => {
         if (formData.password) {
             try {
@@ -76,13 +142,13 @@ const UserModal = ({ isOpen, onClose, onSave, editingUser, availableRoles, avail
     const handleSubmit = (e) => {
         e.preventDefault();
         
-        if (!formData.name.trim()) {
+        if (!formData.firstName.trim()) {
             toast.error('El nombre es obligatorio');
             return;
         }
 
-        if (!emailPrefix.trim()) {
-            toast.error('El email es obligatorio');
+        if (!formData.lastName.trim()) {
+            toast.error('El apellido es obligatorio');
             return;
         }
 
@@ -91,37 +157,45 @@ const UserModal = ({ isOpen, onClose, onSave, editingUser, availableRoles, avail
             return;
         }
 
-        // Construir email completo
-        const fullEmail = emailPrefix + DOMAIN;
+        if (!formData.role_id) {
+            toast.error('El rol es obligatorio');
+            return;
+        }
 
-        // Preparar datos para enviar
+        const fullEmail = generatedEmail + DOMAIN;
+        const fullName = `${formData.firstName} ${formData.lastName}`;
+
         const dataToSend = { 
-            ...formData, 
+            name: fullName,
             email: fullEmail,
-            // Asegurar que los IDs sean números o strings (el service los convertirá)
+            password: formData.password,
             role_id: formData.role_id || null,
+            branch_id: formData.branch_id || null,
             schedule_id: formData.schedule_id || null,
+            phone: formData.phone,
+            photo_url: formData.photo_url,
+            status: 'active'
         };
         
-        // Si es edición y no hay password, no enviarlo
+        console.log('📤 Datos a enviar al backend:', dataToSend); // ⬅️ AGREGAR
+
         if (editingUser && !formData.password) {
             delete dataToSend.password;
         }
 
         onSave(dataToSend);
         
-        // Limpiar formulario
         setFormData({ 
-            name: '', 
-            email: '', 
+            firstName: '',
+            lastName: '',
             password: '', 
             role_id: '', 
+            branch_id: '',
             schedule_id: '', 
             phone: '', 
-            photo_url: '', 
-            status: 'active' 
+            photo_url: '',
         });
-        setEmailPrefix('');
+        setGeneratedEmail('');
     };
 
     const handleChange = (e) => {
@@ -130,11 +204,6 @@ const UserModal = ({ isOpen, onClose, onSave, editingUser, availableRoles, avail
             ...prev,
             [name]: value
         }));
-    };
-
-    const handleEmailPrefixChange = (e) => {
-        const value = e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, '');
-        setEmailPrefix(value);
     };
 
     if (!isOpen) return null;
@@ -161,51 +230,60 @@ const UserModal = ({ isOpen, onClose, onSave, editingUser, availableRoles, avail
                     <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto">
                         <div className="p-6 space-y-5">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {/* Nombre Completo */}
+                                {/* Nombre */}
                                 <div>
                                     <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                        Nombre Completo *
+                                        Nombre *
                                     </label>
                                     <input
                                         type="text"
-                                        name="name"
-                                        value={formData.name}
+                                        name="firstName"
+                                        value={formData.firstName}
                                         onChange={handleChange}
                                         className="w-full px-4 py-2.5 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent transition-all"
-                                        placeholder="Juan Pérez"
+                                        placeholder="Juan"
                                         required
-                                        maxLength={100}
+                                        maxLength={50}
                                     />
                                 </div>
 
-                                {/* Email con dominio automático */}
+                                {/* Apellido */}
                                 <div>
                                     <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                        Email *
+                                        Apellido *
                                     </label>
-                                    <div className="relative">
-                                        <input
-                                            type="text"
-                                            value={emailPrefix}
-                                            onChange={handleEmailPrefixChange}
-                                            className="w-full px-4 py-2.5 pr-32 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent transition-all"
-                                            placeholder="usuario"
-                                            required
-                                            maxLength={50}
-                                            disabled={editingUser}
-                                        />
-                                        <div className="absolute right-0 top-0 h-full flex items-center px-4 bg-gray-100 border-l border-gray-300 pointer-events-none">
-                                            <span className="text-sm text-gray-600 font-semibold">
-                                                {DOMAIN}
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <p className="text-xs text-gray-500 mt-1">
-                                        Email final: <span className="font-semibold">{emailPrefix || 'usuario'}{DOMAIN}</span>
-                                    </p>
+                                    <input
+                                        type="text"
+                                        name="lastName"
+                                        value={formData.lastName}
+                                        onChange={handleChange}
+                                        className="w-full px-4 py-2.5 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent transition-all"
+                                        placeholder="Pérez"
+                                        required
+                                        maxLength={50}
+                                    />
                                 </div>
 
-                                {/* Contraseña con generador */}
+                                {/* Email generado (readonly) */}
+                                <div className="md:col-span-2">
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                        Email (generado automáticamente)
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={generatedEmail ? `${generatedEmail}${DOMAIN}` : ''}
+                                        readOnly
+                                        className="w-full px-4 py-2.5 border border-gray-300 bg-gray-100 text-gray-600 cursor-not-allowed"
+                                        placeholder="Se generará automáticamente desde nombre y apellido"
+                                    />
+                                    {generatedEmail && (
+                                        <p className="text-xs text-gray-500 mt-1">
+                                            📧 Email final: <span className="font-semibold">{generatedEmail}{DOMAIN}</span>
+                                        </p>
+                                    )}
+                                </div>
+
+                                {/* Contraseña */}
                                 <div className="md:col-span-2">
                                     <label className="block text-sm font-semibold text-gray-700 mb-2">
                                         Contraseña {!editingUser && '*'}
@@ -247,7 +325,6 @@ const UserModal = ({ isOpen, onClose, onSave, editingUser, availableRoles, avail
                                             type="button"
                                             onClick={generatePassword}
                                             className="px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white font-semibold text-sm transition-all flex items-center gap-2 shadow-sm"
-                                            title="Generar contraseña segura"
                                         >
                                             <Key className="w-4 h-4" />
                                             Generar
@@ -299,6 +376,26 @@ const UserModal = ({ isOpen, onClose, onSave, editingUser, availableRoles, avail
                                     </select>
                                 </div>
 
+                                {/* Sucursal */}
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                        Sucursal
+                                    </label>
+                                    <select
+                                        name="branch_id"
+                                        value={formData.branch_id}
+                                        onChange={handleChange}
+                                        className="w-full px-4 py-2.5 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent transition-all"
+                                    >
+                                        <option value="">Sin sucursal asignada</option>
+                                        {availableBranches.map(branch => (
+                                            <option key={branch.id} value={branch.id}>
+                                                {branch.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
                                 {/* Horario */}
                                 <div>
                                     <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -319,36 +416,63 @@ const UserModal = ({ isOpen, onClose, onSave, editingUser, availableRoles, avail
                                     </select>
                                 </div>
 
-                                {/* Estado */}
-                                <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                        Estado
-                                    </label>
-                                    <select
-                                        name="status"
-                                        value={formData.status}
-                                        onChange={handleChange}
-                                        className="w-full px-4 py-2.5 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent transition-all"
-                                    >
-                                        <option value="active">Activo</option>
-                                        <option value="inactive">Inactivo</option>
-                                    </select>
-                                </div>
-
-                                {/* URL de Foto */}
+                                {/* Cargar Foto */}
                                 <div className="md:col-span-2">
                                     <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                        URL de Foto
+                                        Foto de Perfil (Opcional)
                                     </label>
-                                    <input
-                                        type="url"
-                                        name="photo_url"
-                                        value={formData.photo_url}
-                                        onChange={handleChange}
-                                        className="w-full px-4 py-2.5 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent transition-all"
-                                        placeholder="https://ejemplo.com/foto.jpg"
-                                        maxLength={500}
-                                    />
+                                    
+                                    {formData.photo_url ? (
+                                        <div className="flex items-center gap-4">
+                                            <img 
+                                                src={formData.photo_url} 
+                                                alt="Preview" 
+                                                className="w-20 h-20 object-cover rounded border-2 border-gray-300"
+                                            />
+                                            <div className="flex-1">
+                                                <p className="text-sm text-gray-600 mb-2">Imagen cargada correctamente</p>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setFormData(prev => ({ ...prev, photo_url: '' }))}
+                                                    className="text-sm text-red-600 hover:text-red-700 font-semibold"
+                                                >
+                                                    Eliminar imagen
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
+                                            <input
+                                                type="file"
+                                                id="photo-upload"
+                                                accept="image/*"
+                                                onChange={handleImageUpload}
+                                                className="hidden"
+                                                disabled={uploadingImage}
+                                            />
+                                            <label
+                                                htmlFor="photo-upload"
+                                                className="cursor-pointer flex flex-col items-center"
+                                            >
+                                                {uploadingImage ? (
+                                                    <>
+                                                        <div className="animate-spin w-12 h-12 border-4 border-gray-300 border-t-red-600 rounded-full mb-3"></div>
+                                                        <p className="text-sm text-gray-600 font-semibold">Subiendo imagen...</p>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <Upload className="w-12 h-12 text-gray-400 mb-3" />
+                                                        <p className="text-sm text-gray-600 font-semibold mb-1">
+                                                            Haz clic para subir una imagen
+                                                        </p>
+                                                        <p className="text-xs text-gray-500">
+                                                            PNG, JPG, GIF hasta 5MB
+                                                        </p>
+                                                    </>
+                                                )}
+                                            </label>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -364,7 +488,8 @@ const UserModal = ({ isOpen, onClose, onSave, editingUser, availableRoles, avail
                                 </button>
                                 <button
                                     type="submit"
-                                    className="flex-1 px-4 py-2.5 bg-gray-900 hover:bg-gray-800 text-white font-semibold text-sm transition-all"
+                                    disabled={uploadingImage}
+                                    className="flex-1 px-4 py-2.5 bg-gray-900 hover:bg-gray-800 text-white font-semibold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     {editingUser ? 'Guardar Cambios' : 'Crear Usuario'}
                                 </button>
@@ -384,12 +509,11 @@ const UsersPage = () => {
     const [editingUser, setEditingUser] = useState(null);
     const [loading, setLoading] = useState(true);
 
-    // Estados para datos del backend
     const [users, setUsers] = useState([]);
     const [availableRoles, setAvailableRoles] = useState([]);
     const [availableSchedules, setAvailableSchedules] = useState([]);
+    const [availableBranches, setAvailableBranches] = useState([]);
 
-    // Cargar datos al montar el componente
     useEffect(() => {
         loadData();
     }, []);
@@ -398,22 +522,17 @@ const UsersPage = () => {
         try {
             setLoading(true);
             
-            // Cargar usuarios, roles y horarios en paralelo
-            const [usersData, rolesData, schedulesData] = await Promise.all([
+            const [usersData, rolesData, schedulesData, branchesData] = await Promise.all([
                 userService.getAll(),
                 roleService.getAll(),
-                scheduleService.getAll()
+                scheduleService.getAll(),
+                branchService.getAll(),
             ]);
-    
-            // ⬇️ AGREGAR ESTOS CONSOLE.LOG PARA DEBUGGEAR
-            console.log('📊 Usuarios recibidos:', usersData);
-            console.log('👥 Roles recibidos:', rolesData);
-            console.log('⏰ Schedules recibidos:', schedulesData);
-            console.log('📦 Tipo de usersData:', Array.isArray(usersData));
-    
+
             setUsers(usersData);
             setAvailableRoles(rolesData);
             setAvailableSchedules(schedulesData);
+            setAvailableBranches(branchesData);
             
             toast.success('Datos cargados correctamente');
         } catch (error) {
@@ -453,7 +572,7 @@ const UsersPage = () => {
                 toast.success('Usuario creado correctamente');
             }
             
-            loadData(); // Recargar lista de usuarios
+            loadData();
             handleCloseModal();
         } catch (error) {
             console.error('Error saving user:', error);
@@ -493,6 +612,7 @@ const UsersPage = () => {
                 'Email': user.email,
                 'Teléfono': user.phone || 'N/A',
                 'Rol': user.role?.name || 'N/A',
+                'Sucursal': user.branch?.name || 'N/A',
                 'Horario': user.schedule?.name || 'N/A',
                 'Estado': user.status === 'active' ? 'Activo' : 'Inactivo',
                 'Último Acceso': user.last_access ? new Date(user.last_access).toLocaleDateString('es-ES') : 'Nunca'
@@ -522,12 +642,15 @@ const UsersPage = () => {
         return role?.name || 'Sin rol';
     };
 
+    const getBranchName = (branchId) => {
+        const branch = availableBranches.find(b => b.id === branchId);
+        return branch?.name || 'Sin sucursal';
+    };
+
     const getScheduleName = (scheduleId) => {
         const schedule = availableSchedules.find(s => s.id === scheduleId);
         return schedule?.name || 'Sin horario';
     };
-
-    
 
     if (loading) {
         return (
@@ -544,7 +667,6 @@ const UsersPage = () => {
         <div className="flex justify-center py-8 bg-gray-50">
             <div className="w-full max-w-7xl px-4">
                 
-                {/* Header */}
                 <div className="flex items-center gap-3 mb-6">
                     <div className="flex items-center justify-center w-10 h-10 bg-gray-800 shadow-sm">
                         <Users className="w-5 h-5 text-white" />
@@ -559,11 +681,9 @@ const UsersPage = () => {
                     </div>
                 </div>
 
-                {/* Barra de acciones */}
                 <div className="bg-white border border-gray-200 shadow-sm p-5 mb-6">
                     <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center space-y-3 lg:space-y-0 gap-4">
                         <div className="flex flex-col sm:flex-row gap-3 flex-1 w-full">
-                            {/* Search */}
                             <div className="relative flex-1 max-w-md">
                                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                                 <input
@@ -575,7 +695,6 @@ const UsersPage = () => {
                                 />
                             </div>
 
-                            {/* Filtro de Estado */}
                             <select
                                 value={statusFilter}
                                 onChange={(e) => setStatusFilter(e.target.value)}
@@ -587,7 +706,6 @@ const UsersPage = () => {
                             </select>
                         </div>
 
-                        {/* Action buttons */}
                         <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
                             <button 
                                 onClick={() => handleOpenModal()}
@@ -616,7 +734,6 @@ const UsersPage = () => {
                     </div>
                 </div>
 
-                {/* Stats Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                     <div className="bg-gradient-to-br from-gray-800 to-gray-900 p-5 text-center shadow-lg">
                         <Users className="w-6 h-6 text-white mx-auto mb-2" />
@@ -641,7 +758,6 @@ const UsersPage = () => {
                     </div>
                 </div>
 
-                {/* Tabla */}
                 <div className="bg-white border border-gray-200 shadow-lg overflow-hidden">
                     <div className="overflow-x-auto">
                         <table className="w-full">
@@ -657,7 +773,7 @@ const UsersPage = () => {
                                         Rol
                                     </th>
                                     <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">
-                                        Horario
+                                        Sucursal
                                     </th>
                                     <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">
                                         Estado
@@ -672,8 +788,22 @@ const UsersPage = () => {
                                     <tr key={user.id} className={`transition-all hover:bg-gray-50 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}`}>
                                         <td className="px-6 py-4">
                                             <div className="flex items-center">
-                                                <div className="w-10 h-10 bg-red-600 flex items-center justify-center mr-3 shadow-sm">
-                                                    <span className="text-white font-bold text-sm">
+                                                <div className="w-10 h-10 bg-red-600 flex items-center justify-center mr-3 shadow-sm overflow-hidden rounded">
+                                                    {user.photo_url ? (
+                                                        <img 
+                                                            src={user.photo_url} 
+                                                            alt={user.name}
+                                                            className="w-full h-full object-cover"
+                                                            onError={(e) => {
+                                                                e.target.style.display = 'none';
+                                                                e.target.nextElementSibling.style.display = 'flex';
+                                                            }}
+                                                        />
+                                                    ) : null}
+                                                    <span 
+                                                        className="text-white font-bold text-sm w-full h-full flex items-center justify-center"
+                                                        style={{ display: user.photo_url ? 'none' : 'flex' }}
+                                                    >
                                                         {user.name?.charAt(0).toUpperCase()}
                                                     </span>
                                                 </div>
@@ -692,19 +822,19 @@ const UsersPage = () => {
                                             <div className="text-xs text-gray-500">{user.phone || 'Sin teléfono'}</div>
                                         </td>
                                         <td className="px-6 py-4">
-                                            <span className="inline-flex items-center px-2.5 py-1 text-xs font-bold bg-purple-100 text-purple-700 border border-purple-200">
+                                            <span className="inline-flex items-center px-2.5 py-1 text-xs font-bold bg-purple-100 text-purple-700 border border-purple-200 rounded">
                                                 {getRoleName(user.role_id)}
                                             </span>
                                         </td>
                                         <td className="px-6 py-4">
                                             <span className="text-sm text-gray-700">
-                                                {getScheduleName(user.schedule_id)}
+                                                {getBranchName(user.branch_id)}
                                             </span>
                                         </td>
                                         <td className="px-6 py-4">
                                             <button
                                                 onClick={() => toggleStatus(user.id)}
-                                                className={`inline-flex items-center px-3 py-1.5 text-xs font-bold shadow-sm transition-all ${
+                                                className={`inline-flex items-center px-3 py-1.5 text-xs font-bold shadow-sm transition-all rounded ${
                                                     user.status === 'active'
                                                         ? 'bg-emerald-100 text-emerald-700 border border-emerald-200 hover:bg-emerald-200'
                                                         : 'bg-red-100 text-red-700 border border-red-200 hover:bg-red-200'
@@ -727,14 +857,14 @@ const UsersPage = () => {
                                             <div className="flex items-center justify-end space-x-2">
                                                 <button 
                                                     onClick={() => handleOpenModal(user)}
-                                                    className="p-2 bg-red-50 hover:bg-red-100 transition-colors border border-red-200"
+                                                    className="p-2 bg-red-50 hover:bg-red-100 transition-colors border border-red-200 rounded"
                                                     title="Editar"
                                                 >
                                                     <Pencil className="w-4 h-4 text-red-600" />
                                                 </button>
                                                 <button
                                                     onClick={() => handleDelete(user.id)}
-                                                    className="p-2 bg-gray-100 hover:bg-gray-200 transition-colors border border-gray-300"
+                                                    className="p-2 bg-gray-100 hover:bg-gray-200 transition-colors border border-gray-300 rounded"
                                                     title="Eliminar"
                                                 >
                                                     <Trash2 className="w-4 h-4 text-gray-800" />
@@ -749,7 +879,7 @@ const UsersPage = () => {
 
                     {filteredUsers.length === 0 && (
                         <div className="text-center py-16 bg-gray-50">
-                            <div className="inline-flex items-center justify-center w-20 h-20 bg-white border-2 border-gray-200 mb-4 shadow-sm">
+                            <div className="inline-flex items-center justify-center w-20 h-20 bg-white border-2 border-gray-200 mb-4 shadow-sm rounded">
                                 <Search className="w-10 h-10 text-gray-400" />
                             </div>
                             <p className="text-gray-700 font-bold text-lg">No se encontraron usuarios</p>
@@ -762,7 +892,6 @@ const UsersPage = () => {
 
             </div>
 
-            {/* Modal */}
             <UserModal
                 isOpen={modalOpen}
                 onClose={handleCloseModal}
@@ -770,6 +899,7 @@ const UsersPage = () => {
                 editingUser={editingUser}
                 availableRoles={availableRoles}
                 availableSchedules={availableSchedules}
+                availableBranches={availableBranches}
             />
         </div>
     );

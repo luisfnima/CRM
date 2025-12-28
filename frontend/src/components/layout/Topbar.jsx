@@ -221,14 +221,34 @@ const Topbar = ({ toggleSidebar }) => {
                                 e.currentTarget.style.backgroundColor = 'transparent';
                             }}
                         >
+
                             <div 
-                                className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-300"
+                                className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-300 overflow-hidden"
                                 style={{ backgroundColor: primaryColor }}
                             >
-                                <span className="text-sm font-medium text-white">
+                                {user?.photo_url ? (
+                                    <img 
+                                        src={user.photo_url} 
+                                        alt={user.name}
+                                        className="w-full h-full object-cover"
+                                        onError={(e) => {
+                                            // Si la imagen falla al cargar, mostrar la inicial
+                                            e.target.style.display = 'none';
+                                            e.target.nextElementSibling.style.display = 'flex';
+                                        }}
+                                    />
+                                ) : null}
+                                <span 
+                                    className="text-sm font-medium text-white w-full h-full flex items-center justify-center"
+                                    style={{ display: user?.photo_url ? 'none' : 'flex' }}
+                                >
                                     {user?.name?.charAt(0).toUpperCase() || 'U'}
                                 </span>
                             </div>
+
+
+
+
 
                             <div className="hidden md:flex flex-col text-left">
                                 <p 
