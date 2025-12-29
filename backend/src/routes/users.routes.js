@@ -8,6 +8,9 @@ import {
   updateUser,
   deleteUser,
   toggleUserStatus,
+  getAgents,
+  getSupervisors,
+  getAvailableUsers,
 } from '../controllers/users.controller.js';
 import {
   authenticate,
@@ -19,6 +22,29 @@ const router = Router();
 // Todas las rutas requieren autenticación
 router.use(authenticate);
 
+// ==================== RUTAS HELPER (ANTES de /:id) ====================
+
+/**
+ * GET /api/users/agents
+ * Obtener solo agentes
+ */
+router.get('/agents', getAgents);
+
+/**
+ * GET /api/users/supervisors
+ * Obtener solo supervisores
+ */
+router.get('/supervisors', getSupervisors);
+
+/**
+ * GET /api/users/available
+ * Obtener usuarios activos disponibles
+ * Query params: role_type (agent, supervisor, all)
+ */
+router.get('/available', getAvailableUsers);
+
+// ==================== RUTAS GENERICAS ====================
+
 /**
  * GET /api/users
  * Obtener todos los usuarios
@@ -26,16 +52,16 @@ router.use(authenticate);
 router.get('/', getAllUsers);
 
 /**
- * GET /api/users/:id
- * Obtener usuario por ID
- */
-router.get('/:id', getUserById);
-
-/**
  * POST /api/users
  * Crear nuevo usuario (requiere permisos de admin/supervisor)
  */
 router.post('/', requireAdminOrSupervisor, createUser);
+
+/**
+ * GET /api/users/:id
+ * Obtener usuario por ID
+ */
+router.get('/:id', getUserById);
 
 /**
  * PUT /api/users/:id

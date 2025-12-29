@@ -25,6 +25,7 @@ router.use(authenticate);
 /**
  * GET /api/roles
  * Listar todos los roles
+ * Query params: active (true/false), role_type (admin, supervisor, backoffice, agent)
  */
 router.get('/', getAllRoles);
 

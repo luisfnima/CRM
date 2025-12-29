@@ -530,7 +530,7 @@ const UsersPage = () => {
             ]);
 
             setUsers(usersData);
-            setAvailableRoles(rolesData);
+            setAvailableRoles(rolesData.data || rolesData || []);
             setAvailableSchedules(schedulesData);
             setAvailableBranches(branchesData);
             
