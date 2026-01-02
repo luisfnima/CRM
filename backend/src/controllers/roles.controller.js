@@ -1,5 +1,4 @@
 // src/controllers/roles.controller.js
-// CREAR ESTE ARCHIVO NUEVO
 import { prisma } from '../lib/prisma.js';
 
 /**
