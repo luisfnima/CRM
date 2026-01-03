@@ -9,6 +9,12 @@ router.use(authenticate);
 router.get('/', async (req, res) => {
   try {
     const companyId = req.user?.companyId;
+/**
+ * GET /api/roles
+ * Listar todos los roles
+ * Query params: active (true/false), role_type (admin, supervisor, backoffice, agent)
+ */
+router.get('/', getAllRoles);
 
     const roles = await prisma.roles.findMany({
       where: {

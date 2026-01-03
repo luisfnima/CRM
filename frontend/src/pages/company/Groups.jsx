@@ -1,16 +1,27 @@
+// frontend/src/pages/RolesPage.jsx
 import { useState, useEffect } from "react";
-import { Plus, Search, Pencil, Trash2, Download, RefreshCw, Shield, X, Clock, Calendar } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, Download, RefreshCw, Shield, X, Clock } from 'lucide-react';
 import toast from 'react-hot-toast';
-//import * as XLSX from 'xlsx';
+import * as XLSX from 'xlsx';
+import roleService from "../../services/roleService";
+import scheduleService from "../../services/scheduleService";
 
 // Modal para Crear/Editar Rol
 const RoleModal = ({ isOpen, onClose, onSave, editingRole, availableSchedules }) => {
     const [formData, setFormData] = useState({
-        name: editingRole?.name || '',
-        description: editingRole?.description || '',
-        permissions: editingRole?.permissions || {},
-        schedules: editingRole?.schedules || []
+        name: '',
+        description: '',
+        role_type: 'agent',
+        permissions: {},
+        schedules: []
     });
+
+    const roleTypes = [
+        { value: 'admin', label: 'Administrador' },
+        { value: 'supervisor', label: 'Supervisor' },
+        { value: 'backoffice', label: 'Back Office' },
+        { value: 'agent', label: 'Agente' }
+    ];
 
     const permissionCategories = {
         users: {
@@ -86,19 +97,33 @@ const RoleModal = ({ isOpen, onClose, onSave, editingRole, availableSchedules })
     useEffect(() => {
         if (editingRole) {
             setFormData({
-                name: editingRole.name,
-                description: editingRole.description,
-                permissions: editingRole.permissions,
-                schedules: editingRole.schedules
+                name: editingRole.name || '',
+                description: editingRole.description || '',
+                role_type: editingRole.role_type || 'agent',
+                permissions: editingRole.permissions || {},
+                schedules: editingRole.schedules || []
+            });
+        } else {
+            setFormData({
+                name: '',
+                description: '',
+                role_type: 'agent',
+                permissions: {},
+                schedules: []
             });
         }
-    }, [editingRole]);
+    }, [editingRole, isOpen]);
 
     const handleSubmit = (e) => {
         e.preventDefault();
         
         if (!formData.name.trim()) {
             toast.error('El nombre es obligatorio');
+            return;
+        }
+
+        if (!formData.role_type) {
+            toast.error('El tipo de rol es obligatorio');
             return;
         }
 
@@ -112,7 +137,14 @@ const RoleModal = ({ isOpen, onClose, onSave, editingRole, availableSchedules })
         }
 
         onSave(formData);
-        setFormData({ name: '', description: '', permissions: {}, schedules: [] });
+        
+        setFormData({ 
+            name: '', 
+            description: '', 
+            role_type: 'agent',
+            permissions: {}, 
+            schedules: [] 
+        });
     };
 
     const handleChange = (e) => {
@@ -182,33 +214,26 @@ const RoleModal = ({ isOpen, onClose, onSave, editingRole, availableSchedules })
 
     return (
         <>
-            {/* Overlay */}
             <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50" onClick={onClose} />
-
-            {/* Modal */}
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                <div className="bg-white w-full max-w-4xl shadow-2xl max-h-[90vh] flex flex-col">
-                    {/* Header */}
-                    <div className="bg-gray-900 text-white px-6 py-5 flex items-center justify-between">
+                <div className="bg-white w-full max-w-4xl shadow-2xl max-h-[90vh] flex flex-col rounded-lg">
+                    <div className="bg-gray-900 text-white px-6 py-5 flex items-center justify-between rounded-t-lg">
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-white/10 flex items-center justify-center">
+                            <div className="w-10 h-10 bg-white/10 flex items-center justify-center rounded">
                                 <Shield className="w-5 h-5 text-white" />
                             </div>
                             <h2 className="text-lg font-semibold">
                                 {editingRole ? 'Editar Rol' : 'Nuevo Rol'}
                             </h2>
                         </div>
-                        <button onClick={onClose} className="hover:bg-white/10 p-2 transition-colors">
+                        <button onClick={onClose} className="hover:bg-white/10 p-2 transition-colors rounded">
                             <X className="w-5 h-5" />
                         </button>
                     </div>
 
-                    {/* Body - Scrollable */}
                     <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto">
                         <div className="p-6 space-y-6">
-                            {/* Información Básica */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {/* Nombre */}
                                 <div>
                                     <label className="block text-sm font-semibold text-gray-700 mb-2">
                                         Nombre del Rol *
@@ -218,41 +243,59 @@ const RoleModal = ({ isOpen, onClose, onSave, editingRole, availableSchedules })
                                         name="name"
                                         value={formData.name}
                                         onChange={handleChange}
-                                        className="w-full px-4 py-2.5 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent transition-all"
+                                        className="w-full px-4 py-2.5 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent transition-all rounded"
                                         placeholder="Ej: Agente de Ventas"
                                         required
                                         maxLength={100}
                                     />
                                 </div>
 
-                                {/* Descripción */}
                                 <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                        Tipo de Rol *
+                                    </label>
+                                    <select
+                                        name="role_type"
+                                        value={formData.role_type}
+                                        onChange={handleChange}
+                                        className="w-full px-4 py-2.5 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent transition-all rounded"
+                                        required
+                                    >
+                                        {roleTypes.map(type => (
+                                            <option key={type.value} value={type.value}>
+                                                {type.label}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div className="md:col-span-2">
                                     <label className="block text-sm font-semibold text-gray-700 mb-2">
                                         Descripción
                                     </label>
-                                    <input
-                                        type="text"
+                                    <textarea
                                         name="description"
                                         value={formData.description}
                                         onChange={handleChange}
-                                        className="w-full px-4 py-2.5 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent transition-all"
+                                        className="w-full px-4 py-2.5 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent transition-all rounded resize-none"
                                         placeholder="Breve descripción del rol"
+                                        rows="2"
                                         maxLength={300}
                                     />
                                 </div>
                             </div>
 
-                            {/* Horarios Asignados */}
+                            {/* Horarios */}
                             {availableSchedules && availableSchedules.length > 0 && (
                                 <div>
                                     <label className="block text-sm font-semibold text-gray-700 mb-3">
                                         Horarios Asignados
                                     </label>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 bg-gray-50 border border-gray-200 p-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 bg-gray-50 border border-gray-200 p-4 rounded-lg">
                                         {availableSchedules.map((schedule) => (
                                             <label
                                                 key={schedule.id}
-                                                className={`flex items-center p-3 border-2 cursor-pointer transition-all ${
+                                                className={`flex items-center p-3 border-2 cursor-pointer transition-all rounded ${
                                                     formData.schedules.includes(schedule.id)
                                                         ? 'bg-blue-50 border-blue-500'
                                                         : 'bg-white border-gray-200 hover:border-blue-300'
@@ -262,7 +305,7 @@ const RoleModal = ({ isOpen, onClose, onSave, editingRole, availableSchedules })
                                                     type="checkbox"
                                                     checked={formData.schedules.includes(schedule.id)}
                                                     onChange={() => toggleSchedule(schedule.id)}
-                                                    className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                                                    className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500 rounded"
                                                 />
                                                 <div className="ml-3 flex-1">
                                                     <div className="flex items-center gap-2">
@@ -298,8 +341,7 @@ const RoleModal = ({ isOpen, onClose, onSave, editingRole, availableSchedules })
                                         const isPartial = isCategoryPartiallyChecked(category);
 
                                         return (
-                                            <div key={category} className="border border-gray-200 bg-white">
-                                                {/* Category Header */}
+                                            <div key={category} className="border border-gray-200 bg-white rounded-lg overflow-hidden">
                                                 <div 
                                                     className={`px-4 py-3 flex items-center justify-between cursor-pointer transition-colors ${
                                                         isChecked || isPartial ? 'bg-gray-900' : 'bg-gray-100 hover:bg-gray-200'
@@ -307,7 +349,7 @@ const RoleModal = ({ isOpen, onClose, onSave, editingRole, availableSchedules })
                                                     onClick={() => toggleCategory(category)}
                                                 >
                                                     <div className="flex items-center gap-3">
-                                                        <div className={`w-5 h-5 border-2 flex items-center justify-center transition-all ${
+                                                        <div className={`w-5 h-5 border-2 flex items-center justify-center transition-all rounded ${
                                                             isChecked 
                                                                 ? 'bg-white border-white' 
                                                                 : isPartial
@@ -320,7 +362,7 @@ const RoleModal = ({ isOpen, onClose, onSave, editingRole, availableSchedules })
                                                                 </svg>
                                                             )}
                                                             {isPartial && (
-                                                                <div className="w-2 h-2 bg-white"></div>
+                                                                <div className="w-2 h-2 bg-white rounded-sm"></div>
                                                             )}
                                                         </div>
                                                         <Shield className={`w-5 h-5 ${isChecked || isPartial ? 'text-white' : 'text-gray-600'}`} />
@@ -335,18 +377,17 @@ const RoleModal = ({ isOpen, onClose, onSave, editingRole, availableSchedules })
                                                     </span>
                                                 </div>
 
-                                                {/* Permissions List */}
                                                 <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-2">
                                                     {Object.entries(categoryData.permissions).map(([permKey, permLabel]) => (
                                                         <label
                                                             key={permKey}
-                                                            className="flex items-center p-2 hover:bg-gray-50 cursor-pointer transition-colors"
+                                                            className="flex items-center p-2 hover:bg-gray-50 cursor-pointer transition-colors rounded"
                                                         >
                                                             <input
                                                                 type="checkbox"
                                                                 checked={formData.permissions[category]?.[permKey] || false}
                                                                 onChange={() => togglePermission(category, permKey)}
-                                                                className="w-4 h-4 text-gray-900 border-gray-300 focus:ring-gray-400"
+                                                                className="w-4 h-4 text-gray-900 border-gray-300 focus:ring-gray-400 rounded"
                                                             />
                                                             <span className="ml-2 text-sm text-gray-700">
                                                                 {permLabel}
@@ -361,19 +402,18 @@ const RoleModal = ({ isOpen, onClose, onSave, editingRole, availableSchedules })
                             </div>
                         </div>
 
-                        {/* Footer */}
-                        <div className="border-t border-gray-200 px-6 py-4 bg-gray-50">
+                        <div className="border-t border-gray-200 px-6 py-4 bg-gray-50 rounded-b-lg">
                             <div className="flex gap-3">
                                 <button
                                     type="button"
                                     onClick={onClose}
-                                    className="flex-1 px-4 py-2.5 border border-gray-300 hover:bg-gray-100 text-gray-700 font-semibold text-sm transition-all"
+                                    className="flex-1 px-4 py-2.5 border border-gray-300 hover:bg-gray-100 text-gray-700 font-semibold text-sm transition-all rounded"
                                 >
                                     Cancelar
                                 </button>
                                 <button
                                     type="submit"
-                                    className="flex-1 px-4 py-2.5 bg-gray-900 hover:bg-gray-800 text-white font-semibold text-sm transition-all"
+                                    className="flex-1 px-4 py-2.5 bg-gray-900 hover:bg-gray-800 text-white font-semibold text-sm transition-all rounded"
                                 >
                                     {editingRole ? 'Guardar Cambios' : 'Crear Rol'}
                                 </button>
@@ -386,72 +426,58 @@ const RoleModal = ({ isOpen, onClose, onSave, editingRole, availableSchedules })
     );
 };
 
-const Roles = () => {
+const RolesPage = () => {
     const [searchTerm, setSearchTerm] = useState('');
-    const [showInactive, setShowInactive] = useState(false);
+    const [statusFilter, setStatusFilter] = useState('active');
     const [modalOpen, setModalOpen] = useState(false);
     const [editingRole, setEditingRole] = useState(null);
-    
-    // Horarios disponibles (normalmente vendrían de una API)
-    const [availableSchedules] = useState([
-        { id: 1, name: 'Turno Mañana', start_time: '06:00', end_time: '14:00' },
-        { id: 2, name: 'Turno Tarde', start_time: '14:00', end_time: '22:00' },
-        { id: 3, name: 'Turno Noche', start_time: '22:00', end_time: '06:00' },
-        { id: 4, name: 'Disponibilidad 24/7', start_time: null, end_time: null }
-    ]);
+    const [loading, setLoading] = useState(true);
+    const [roles, setRoles] = useState([]);
+    const [availableSchedules, setAvailableSchedules] = useState([]);
 
-    const [roles, setRoles] = useState([
-        {
-            id: 1,
-            company_id: 1,
-            name: 'Agente de Ventas',
-            description: 'Agente encargado de realizar llamadas de ventas',
-            permissions: {
-                calls: { make_calls: true, view_call_history: true },
-                leads: { view_leads: true, edit_leads: true }
-            },
-            schedules: [1, 2],
-            active: true,
-            created_at: '2024-01-15T10:30:00'
-        },
-        {
-            id: 2,
-            company_id: 1,
-            name: 'Supervisor',
-            description: 'Supervisor de equipo con acceso completo',
-            permissions: {
-                users: { view_users: true, edit_users: true },
-                calls: { make_calls: true, view_call_history: true, listen_recordings: true },
-                leads: { view_leads: true, edit_leads: true, assign_leads: true },
-                monitoring: { real_time_monitoring: true, view_statistics: true, agent_supervision: true }
-            },
-            schedules: [1, 2, 3],
-            active: true,
-            created_at: '2024-01-20T11:00:00'
-        },
-        {
-            id: 3,
-            company_id: 1,
-            name: 'Administrador',
-            description: 'Acceso total al sistema',
-            permissions: {
-                users: { view_users: true, create_users: true, edit_users: true, delete_users: true },
-                roles: { view_roles: true, create_roles: true, edit_roles: true, delete_roles: true },
-                campaigns: { view_campaigns: true, create_campaigns: true, edit_campaigns: true, delete_campaigns: true },
-                reports: { view_reports: true, export_reports: true, advanced_reports: true },
-                config: { view_config: true, edit_config: true, system_settings: true }
-            },
-            schedules: [4],
-            active: true,
-            created_at: '2024-01-10T09:00:00'
+    useEffect(() => {
+        loadData();
+    }, [statusFilter]);
+
+    const loadData = async () => {
+        try {
+            setLoading(true);
+            
+            const [rolesResponse, schedulesResponse] = await Promise.all([
+                roleService.getAll(),
+                scheduleService.getAll()
+            ]);
+
+            // Extraer data según la estructura de respuesta
+            const rolesData = rolesResponse.data || rolesResponse || [];
+            const schedulesData = schedulesResponse.data || schedulesResponse || [];
+
+            // Filtrar por status
+            const filteredRoles = statusFilter === 'all' 
+                ? rolesData 
+                : rolesData.filter(role => {
+                    const isActive = role.active !== false; // Por defecto true si no existe
+                    return statusFilter === 'active' ? isActive : !isActive;
+                });
+
+            setRoles(filteredRoles);
+            setAvailableSchedules(schedulesData);
+            
+            toast.success('Datos cargados correctamente');
+        } catch (error) {
+            console.error('Error loading data:', error);
+            toast.error(error.response?.data?.error || error.message || 'Error al cargar los datos');
+        } finally {
+            setLoading(false);
         }
-    ]);
+    };
 
     const filteredRoles = roles.filter(role => {
-        const matchesSearch = role.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                             role.description?.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesStatus = showInactive ? !role.active : role.active;
-        return matchesSearch && matchesStatus;
+        const matchesSearch = 
+            role.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            role.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            role.role_type?.toLowerCase().includes(searchTerm.toLowerCase());
+        return matchesSearch;
     });
 
     const handleOpenModal = (role = null) => {
@@ -464,148 +490,152 @@ const Roles = () => {
         setEditingRole(null);
     };
 
-    const handleSave = (formData) => {
-        if (editingRole) {
-            setRoles(roles.map(r =>
-                r.id === editingRole.id
-                    ? { 
-                        ...r, 
-                        name: formData.name,
-                        description: formData.description,
-                        permissions: formData.permissions,
-                        schedules: formData.schedules
-                    }
-                    : r
-            ));
-            toast.success('Rol actualizado correctamente');
-        } else {
-            const newRole = {
-                id: roles.length + 1,
-                company_id: 1,
-                name: formData.name,
-                description: formData.description,
-                permissions: formData.permissions,
-                schedules: formData.schedules,
-                active: true,
-                created_at: new Date().toISOString()
-            };
-            setRoles([...roles, newRole]);
-            toast.success('Rol creado correctamente');
+    const handleSave = async (formData) => {
+        try {
+            if (editingRole) {
+                await roleService.update(editingRole.id, formData);
+                toast.success('Rol actualizado correctamente');
+            } else {
+                await roleService.create(formData);
+                toast.success('Rol creado correctamente');
+            }
+            
+            loadData();
+            handleCloseModal();
+        } catch (error) {
+            console.error('Error saving role:', error);
+            const errorMessage = error.response?.data?.error || error.message || 'Error al guardar rol';
+            toast.error(errorMessage);
         }
-        handleCloseModal();
     };
 
-    const handleDelete = (id) => {
+    const handleDelete = async (id) => {
         if (window.confirm('¿Estás seguro de eliminar este rol?')) {
-            setRoles(roles.filter(r => r.id !== id));
-            toast.success('Rol eliminado correctamente');
+            try {
+                await roleService.delete(id);
+                toast.success('Rol eliminado correctamente');
+                loadData();
+            } catch (error) {
+                console.error('Error deleting role:', error);
+                toast.error(error.response?.data?.error || error.message || 'Error al eliminar rol');
+            }
         }
     };
 
-    const toggleStatus = (id) => {
-        setRoles(roles.map(r =>
-            r.id === id ? { ...r, active: !r.active } : r
-        ));
-        toast.success('Estado actualizado');
+    const toggleFilter = () => {
+        setStatusFilter(prev => prev === 'active' ? 'inactive' : 'active');
     };
 
     const handleExport = () => {
         try {
             const dataToExport = filteredRoles.map(role => ({
-                'ID': role.id,
                 'Nombre': role.name,
+                'Tipo': getRoleTypeLabel(role.role_type),
                 'Descripción': role.description || 'Sin descripción',
-                'Permisos': Object.keys(role.permissions).length,
-                'Horarios': role.schedules.length,
-                'Estado': role.active ? 'Activo' : 'Inactivo',
-                'Fecha Creación': new Date(role.created_at).toLocaleDateString('es-ES'),
+                'Permisos': countPermissions(role.permissions),
+                'Estado': role.active !== false ? 'Activo' : 'Inactivo',
+                'Usuarios': role._count?.users || 0,
+                'Creado': new Date(role.created_at).toLocaleDateString('es-ES')
             }));
 
             const worksheet = XLSX.utils.json_to_sheet(dataToExport);
             const workbook = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(workbook, worksheet, 'Roles');
 
-            worksheet['!cols'] = [
-                { wch: 10 }, { wch: 25 }, { wch: 40 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 15 }
-            ];
-
             const fecha = new Date().toISOString().split('T')[0];
             XLSX.writeFile(workbook, `roles_${fecha}.xlsx`);
 
             toast.success('Archivo exportado correctamente');
         } catch (error) {
+            console.error('Export error:', error);
             toast.error('Error al exportar');
         }
     };
 
-    const handleRefresh = () => {
-        toast.success('Datos actualizados');
-    };
-
     const countPermissions = (permissions) => {
+        if (!permissions || typeof permissions !== 'object') return 0;
         let count = 0;
         Object.values(permissions).forEach(category => {
-            Object.values(category).forEach(value => {
-                if (value === true) count++;
-            });
+            if (category && typeof category === 'object') {
+                Object.values(category).forEach(value => {
+                    if (value === true) count++;
+                });
+            }
         });
         return count;
     };
 
-    const getScheduleNames = (scheduleIds) => {
-        return scheduleIds.map(id => {
-            const schedule = availableSchedules.find(s => s.id === id);
-            return schedule?.name || '';
-        }).filter(Boolean);
+    const getRoleTypeLabel = (type) => {
+        const types = {
+            'admin': 'Administrador',
+            'supervisor': 'Supervisor',
+            'backoffice': 'Back Office',
+            'agent': 'Agente'
+        };
+        return types[type] || type;
     };
 
+    if (loading) {
+        return (
+            <div className="flex justify-center items-center h-screen">
+                <div className="text-center">
+                    <div className="animate-spin w-12 h-12 border-4 border-gray-300 border-t-gray-800 rounded-full mx-auto mb-4"></div>
+                    <p className="text-gray-600 font-semibold">Cargando roles...</p>
+                </div>
+            </div>
+        );
+    }
+
     return (
-        <div className="flex justify-center py-8 bg-gray-50">
-            <div className="w-full max-w-6xl px-4">
+        <div className="flex justify-center py-4 bg-gray-50 min-h-screen">
+            <div className="w-full max-w-7xl px-4">
                 
-                {/* Header */}
-                <div className="flex items-center gap-3 mb-6">
-                    <div className="flex items-center justify-center w-10 h-10 bg-gray-800 shadow-sm">
-                        <Shield className="w-5 h-5 text-white" />
-                    </div>
-                    <div>
-                        <h1 className="text-xl font-bold text-gray-800">
+                <div className="bg-gradient-to-r from-gray-800 to-gray-900 border-l-4 border-red-600 px-6 py-4 mb-4 shadow-md rounded-tr-lg rounded-br-lg">
+                    <div className="flex items-center gap-3">
+                        <Shield className="w-7 h-7 text-white" />
+                        <h1 className="text-2xl font-bold text-white">
                             Gestión de Roles
                         </h1>
-                        <p className="text-xs text-gray-600">
-                            Administra roles y permisos del sistema
-                        </p>
                     </div>
                 </div>
 
-                {/* Barra de acciones */}
-                <div className="bg-white border border-gray-200 shadow-sm p-5 mb-6">
+                <div className="bg-white border border-gray-200 shadow-sm p-4 mb-4 rounded-lg">
                     <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center space-y-3 lg:space-y-0 gap-4">
-                        {/* Search */}
-                        <div className="relative flex-1 w-full lg:max-w-md">
+                        <div className="relative flex-1 max-w-md">
                             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                             <input
                                 type="text"
-                                placeholder="Buscar por nombre o descripción..."
+                                placeholder="Buscar por nombre, tipo o descripción..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent transition-all"
+                                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent transition-all rounded text-sm"
                             />
                         </div>
 
-                        {/* Action buttons */}
                         <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
                             <button 
+                                onClick={toggleFilter}
+                                className={`flex items-center justify-center px-4 py-2.5 text-white font-semibold transition-all shadow-md hover:shadow-lg rounded text-sm ${
+                                    statusFilter === 'active' 
+                                        ? 'bg-emerald-600 hover:bg-emerald-700'
+                                        : 'bg-red-600 hover:bg-red-700'
+                                }`}
+                            >
+                                <Shield className="w-4 h-4 mr-2" />
+                                {statusFilter === 'active' ? 'Ver Inactivos' : 'Ver Activos'}
+                            </button>
+
+                            <button 
                                 onClick={() => handleOpenModal()}
-                                className="flex items-center justify-center px-4 py-2.5 bg-gray-800 text-white hover:bg-gray-900 transition-all shadow-md hover:shadow-lg font-semibold text-sm"
+                                className="flex items-center justify-center px-4 py-2.5 bg-gray-800 text-white hover:bg-gray-900 transition-all shadow-md hover:shadow-lg font-semibold text-sm rounded"
                             >
                                 <Plus className="w-4 h-4 mr-2" />
-                                Crear Nuevo
+                                Crear Rol
                             </button>
                             
                             <button 
-                                onClick={handleRefresh}
-                                className="flex items-center justify-center px-4 py-2.5 bg-red-600 text-white hover:bg-red-700 transition-all shadow-md hover:shadow-lg font-semibold text-sm"
+                                onClick={loadData}
+                                className="flex items-center justify-center px-4 py-2.5 bg-blue-600 text-white hover:bg-blue-700 transition-all shadow-md hover:shadow-lg font-semibold text-sm rounded"
                             >
                                 <RefreshCw className="w-4 h-4 mr-2" />
                                 Actualizar
@@ -613,35 +643,25 @@ const Roles = () => {
                             
                             <button 
                                 onClick={handleExport}
-                                className="flex items-center justify-center px-4 py-2.5 bg-gray-800 text-white hover:bg-gray-900 transition-all shadow-md hover:shadow-lg font-semibold text-sm"
+                                className="flex items-center justify-center px-4 py-2.5 bg-gray-800 text-white hover:bg-gray-900 transition-all shadow-md hover:shadow-lg font-semibold text-sm rounded"
                             >
                                 <Download className="w-4 h-4 mr-2" />
                                 Exportar
-                            </button>
-                            
-                            <button 
-                                onClick={() => setShowInactive(!showInactive)}
-                                className={`flex items-center justify-center px-4 py-2.5 transition-all shadow-md hover:shadow-lg font-semibold text-sm ${
-                                    showInactive 
-                                        ? 'bg-red-600 text-white hover:bg-red-700' 
-                                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                                }`}
-                            >
-                                <Shield className="w-4 h-4 mr-2" />
-                                {showInactive ? 'Ver Activos' : 'Ver Inactivos'}
                             </button>
                         </div>
                     </div>
                 </div>
 
-                {/* Tabla */}
-                <div className="bg-white border border-gray-200 shadow-lg overflow-hidden">
+                <div className="bg-white border border-gray-200 shadow-lg overflow-hidden mb-4 rounded-lg">
                     <div className="overflow-x-auto">
                         <table className="w-full">
                             <thead>
                                 <tr className="bg-gray-900">
-                                    <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider rounded-tl-lg">
                                         Rol
+                                    </th>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">
+                                        Tipo
                                     </th>
                                     <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">
                                         Descripción
@@ -650,12 +670,9 @@ const Roles = () => {
                                         Permisos
                                     </th>
                                     <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">
-                                        Horarios
+                                        Usuarios
                                     </th>
-                                    <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">
-                                        Estado
-                                    </th>
-                                    <th className="px-6 py-4 text-right text-xs font-bold text-white uppercase tracking-wider">
+                                    <th className="px-6 py-4 text-right text-xs font-bold text-white uppercase tracking-wider rounded-tr-lg">
                                         Acciones
                                     </th>
                                 </tr>
@@ -665,18 +682,20 @@ const Roles = () => {
                                     <tr key={role.id} className={`transition-all hover:bg-gray-50 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}`}>
                                         <td className="px-6 py-4">
                                             <div className="flex items-center">
-                                                <div className="w-10 h-10 bg-gray-800 flex items-center justify-center mr-3 shadow-sm">
+                                                <div className="w-10 h-10 bg-purple-600 flex items-center justify-center mr-3 shadow-sm rounded">
                                                     <Shield className="w-5 h-5 text-white" />
                                                 </div>
                                                 <div>
                                                     <div className="text-sm font-bold text-gray-900">
                                                         {role.name}
                                                     </div>
-                                                    <div className="text-xs text-gray-500">
-                                                        ID: {role.id}
-                                                    </div>
                                                 </div>
                                             </div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <span className="inline-flex items-center px-2.5 py-1 text-xs font-bold bg-blue-100 text-blue-700 border border-blue-200 rounded">
+                                                {getRoleTypeLabel(role.role_type)}
+                                            </span>
                                         </td>
                                         <td className="px-6 py-4">
                                             <span className="text-sm text-gray-700">
@@ -684,65 +703,30 @@ const Roles = () => {
                                             </span>
                                         </td>
                                         <td className="px-6 py-4">
-                                            <span className="inline-flex items-center px-3 py-1.5 text-xs font-bold bg-purple-100 text-purple-700 border border-purple-200">
+                                            <span className="inline-flex items-center px-2.5 py-1 text-xs font-bold bg-purple-100 text-purple-700 border border-purple-200 rounded">
                                                 <Shield className="w-3 h-3 mr-1" />
                                                 {countPermissions(role.permissions)} permisos
                                             </span>
                                         </td>
                                         <td className="px-6 py-4">
-                                            <div className="flex flex-wrap gap-1">
-                                                {getScheduleNames(role.schedules).map((name, idx) => (
-                                                    <span
-                                                        key={idx}
-                                                        className="inline-flex items-center px-2 py-1 text-xs font-medium bg-blue-100 text-blue-700 border border-blue-200"
-                                                    >
-                                                        <Clock className="w-3 h-3 mr-1" />
-                                                        {name}
-                                                    </span>
-                                                ))}
-                                                {role.schedules.length === 0 && (
-                                                    <span className="text-xs text-gray-400 italic">
-                                                        Sin horarios
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <span 
-                                                className={`inline-flex items-center px-3 py-1.5 text-xs font-bold shadow-sm ${
-                                                    role.active
-                                                        ? 'bg-emerald-100 text-emerald-700 border border-emerald-200'
-                                                        : 'bg-red-100 text-red-700 border border-red-200'
-                                                }`}
-                                            >
-                                                <span className={`w-2 h-2 ${role.active ? 'bg-emerald-500' : 'bg-red-500'} rounded-full mr-2`}></span>
-                                                {role.active ? 'Activo' : 'Inactivo'}
+                                            <span className="text-sm text-gray-600">
+                                                {role._count?.users || 0} usuario(s)
                                             </span>
                                         </td>
                                         <td className="px-6 py-4">
                                             <div className="flex items-center justify-end space-x-2">
-                                                <button
-                                                    onClick={() => toggleStatus(role.id)}
-                                                    className={`p-2 transition-colors border ${
-                                                        role.active 
-                                                            ? 'bg-orange-50 hover:bg-orange-100 border-orange-200'
-                                                            : 'bg-green-50 hover:bg-green-100 border-green-200'
-                                                    }`}
-                                                    title={role.active ? 'Desactivar' : 'Activar'}
-                                                >
-                                                    <Shield className={`w-4 h-4 ${role.active ? 'text-orange-600' : 'text-green-600'}`} />
-                                                </button>
                                                 <button 
                                                     onClick={() => handleOpenModal(role)}
-                                                    className="p-2 bg-red-50 hover:bg-red-100 transition-colors border border-red-200"
+                                                    className="p-2 bg-red-50 hover:bg-red-100 transition-colors border border-red-200 rounded"
                                                     title="Editar"
                                                 >
                                                     <Pencil className="w-4 h-4 text-red-600" />
                                                 </button>
                                                 <button
                                                     onClick={() => handleDelete(role.id)}
-                                                    className="p-2 bg-gray-100 hover:bg-gray-200 transition-colors border border-gray-300"
+                                                    className="p-2 bg-gray-100 hover:bg-gray-200 transition-colors border border-gray-300 rounded"
                                                     title="Eliminar"
+                                                    disabled={role._count?.users > 0}
                                                 >
                                                     <Trash2 className="w-4 h-4 text-gray-800" />
                                                 </button>
@@ -754,50 +738,44 @@ const Roles = () => {
                         </table>
                     </div>
 
-                    {/* Empty state */}
                     {filteredRoles.length === 0 && (
                         <div className="text-center py-16 bg-gray-50">
-                            <div className="inline-flex items-center justify-center w-20 h-20 bg-white border-2 border-gray-200 mb-4 shadow-sm">
+                            <div className="inline-flex items-center justify-center w-20 h-20 bg-white border-2 border-gray-200 mb-4 shadow-sm rounded">
                                 <Search className="w-10 h-10 text-gray-400" />
                             </div>
                             <p className="text-gray-700 font-bold text-lg">No se encontraron roles</p>
                             <p className="text-gray-500 text-sm mt-2">
-                                {showInactive 
-                                    ? 'No hay roles inactivos' 
-                                    : 'Intenta con otros términos de búsqueda'}
+                                Intenta con otros términos de búsqueda
                             </p>
                         </div>
                     )}
                 </div>
 
-                {/* Stats footer */}
-                <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="bg-gradient-to-br from-gray-800 to-gray-900 p-5 text-center shadow-lg">
-                        <Shield className="w-6 h-6 text-white mx-auto mb-2" />
-                        <p className="text-xs text-gray-300 uppercase tracking-wider mb-1">Total Roles</p>
-                        <p className="text-2xl font-bold text-white">{roles.length}</p>
-                    </div>
-                    
-                    <div className="bg-gradient-to-br from-emerald-500 to-green-600 p-5 text-center shadow-lg">
-                        <div className="w-6 h-6 bg-white/30 mx-auto mb-2 flex items-center justify-center">
-                            <span className="w-3 h-3 bg-white rounded-full"></span>
+                <div className="flex justify-end">
+                    <div className="bg-white border border-gray-200 shadow-md px-6 py-3 inline-flex items-center gap-6 rounded-lg">
+                        <div className="text-center">
+                            <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Total</p>
+                            <p className="text-lg font-bold text-gray-800">{roles.length}</p>
                         </div>
-                        <p className="text-xs text-emerald-100 uppercase tracking-wider mb-1">Activos</p>
-                        <p className="text-2xl font-bold text-white">{roles.filter(r => r.active).length}</p>
-                    </div>
-                    
-                    <div className="bg-gradient-to-br from-red-600 to-red-700 p-5 text-center shadow-lg">
-                        <div className="w-6 h-6 bg-white/30 mx-auto mb-2 flex items-center justify-center">
-                            <span className="w-3 h-3 bg-white rounded-full"></span>
+                        <div className="w-px h-10 bg-gray-300"></div>
+                        <div className="text-center">
+                            <p className="text-xs text-emerald-600 uppercase tracking-wider mb-1">Activos</p>
+                            <p className="text-lg font-bold text-emerald-600">
+                                {roles.filter(r => r.active !== false).length}
+                            </p>
                         </div>
-                        <p className="text-xs text-red-100 uppercase tracking-wider mb-1">Inactivos</p>
-                        <p className="text-2xl font-bold text-white">{roles.filter(r => !r.active).length}</p>
+                        <div className="w-px h-10 bg-gray-300"></div>
+                        <div className="text-center">
+                            <p className="text-xs text-red-600 uppercase tracking-wider mb-1">Inactivos</p>
+                            <p className="text-lg font-bold text-red-600">
+                                {roles.filter(r => r.active === false).length}
+                            </p>
+                        </div>
                     </div>
                 </div>
 
             </div>
 
-            {/* Modal */}
             <RoleModal
                 isOpen={modalOpen}
                 onClose={handleCloseModal}
@@ -809,4 +787,4 @@ const Roles = () => {
     );
 };
 
-export default Roles;
+export default RolesPage;

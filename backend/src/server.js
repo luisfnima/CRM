@@ -11,8 +11,10 @@ import callsRoutes from './routes/calls.routes.js';
 import salesRoutes from './routes/sales.routes.js';
 import productsRoutes from './routes/products.routes.js';
 import leadCampaignRoutes from './routes/leadCampaign.routes.js';
-import roleRoutes from './routes/roles.routes.js';           // ⬅️ NUEVO
-import scheduleRoutes from './routes/schedules.routes.js';   // ⬅️ NUEVO
+import roleRoutes from './routes/roles.routes.js';
+import scheduleRoutes from './routes/schedules.routes.js';
+import companiesRoutes from './routes/companies.routes.js';
+import statusesRoutes from './routes/statuses.routes.js';
 
 dotenv.config();
 
@@ -35,14 +37,17 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/vault', vaultRoutes);
 app.use('/api/users', usersRoutes);
-app.use('/api/roles', roleRoutes);                    // ⬅️ NUEVO
-app.use('/api/schedules', scheduleRoutes);            // ⬅️ NUEVO
+app.use('/api/roles', roleRoutes);
+app.use('/api/schedules', scheduleRoutes);
 app.use('/api/campaigns', campaignsRoutes); 
 app.use('/api/leads', leadsRoutes);
 app.use('/api/calls', callsRoutes);
 app.use('/api/sales', salesRoutes);  
 app.use('/api/products', productsRoutes);
 app.use('/api/lead-campaign', leadCampaignRoutes);
+app.use('/api/companies', companiesRoutes);
+app.use('/api/statuses', statusesRoutes);
+app.use('/api/branches', branchRoutes);
 
 app.get('/api/health', (req, res) => {
     res.json({status: 'ok', message: 'CRM API is running'});
@@ -55,8 +60,6 @@ app.use((err,req,res,next) => {
         message: process.env.NODE_ENV === 'development' ? err.message: undefined
     });
 });
-
-app.use('/api/branches', branchRoutes);
 
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);

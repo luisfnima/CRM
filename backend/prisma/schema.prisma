@@ -18,10 +18,19 @@ model companies {
   active              Boolean?              @default(true)
   created_at          DateTime?             @default(now()) @db.Timestamp(6)
   updated_at          DateTime?             @default(now()) @updatedAt @db.Timestamp(6)
+  owner               String?               @db.VarChar(255)
   announcements       announcements[]
+  blacklists          blacklists[]
   branches            branches[]
+  campaigns           campaigns[]
+  categories          categories[]
+  chats               chats[]
   disconnection_types disconnection_types[]
+  lead_lists          lead_lists[]
+  leads               leads[]
+  phone_config        phone_config?
   popups              popups[]
+  products            products[]
   roles               roles[]
   schedules           schedules[]
   users               users[]
@@ -98,6 +107,7 @@ model users {
   company_id                                      Int
   name                                            String                @db.VarChar(150)
   email                                           String                @db.VarChar(200)
+  password                                        String                @db.VarChar(255)
   role_id                                         Int?
   branch_id                                       Int?
   schedule_id                                     Int?
@@ -107,15 +117,26 @@ model users {
   last_access                                     DateTime?             @db.Timestamp(6)
   created_at                                      DateTime?             @default(now()) @db.Timestamp(6)
   updated_at                                      DateTime?             @default(now()) @updatedAt @db.Timestamp(6)
-  password                                        String?               @db.VarChar(255)
   announcements_created                           announcements[]
   attendance                                      attendance[]
+  blacklists                                      blacklists[]
+  calls                                           calls[]
+  campaign_users                                  campaign_users[]
+  campaigns                                       campaigns[]
+  chat_participants                               chat_participants[]
+  chats                                           chats[]
+  lead_campaign                                   lead_campaign[]
+  lead_lists                                      lead_lists[]
+  lead_status_history                             lead_status_history[]
+  message_reactions                               message_reactions[]
+  messages                                        messages[]
   navigation                                      navigation[]
   password_access_log                             password_access_log[]
   password_vault_password_vault_created_byTousers password_vault[]      @relation("password_vault_created_byTousers")
   password_vault_password_vault_user_idTousers    password_vault?       @relation("password_vault_user_idTousers")
   popup_views                                     popup_views[]
   popups_created                                  popups[]
+  sales                                           sales[]
   sessions                                        sessions[]
   branch                                          branches?             @relation(fields: [branch_id], references: [id], onUpdate: NoAction)
   company                                         companies             @relation(fields: [company_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
@@ -317,4 +338,523 @@ model vault_sessions {
 
   @@index([is_active, expires_at], map: "idx_vault_sessions_active")
   @@index([admin_id], map: "idx_vault_sessions_admin")
+}
+
+model blacklists {
+  id         Int       @id @default(autoincrement())
+  company_id Int
+  value      String    @db.VarChar(15)
+  reason     String?
+  added_by   Int?
+  added_at   DateTime? @default(now()) @db.Timestamp(6)
+  users      users?    @relation(fields: [added_by], references: [id], onUpdate: NoAction)
+  companies  companies @relation(fields: [company_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([company_id, value])
+  @@index([company_id], map: "idx_blacklists_company")
+  @@index([value], map: "idx_blacklists_value")
+}
+
+model call_results {
+  id                  Int          @id @default(autoincrement())
+  result_type_id      Int
+  name                String       @db.VarChar(100)
+  description         String?
+  is_auto             Boolean?     @default(false)
+  requires_reschedule Boolean?     @default(false)
+  created_at          DateTime?    @default(now()) @db.Timestamp(6)
+  result_types        result_types @relation(fields: [result_type_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  calls               calls[]
+
+  @@index([result_type_id], map: "idx_call_results_type")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model calls {
+  id               Int           @id @default(autoincrement())
+  lead_campaign_id Int
+  agent_id         Int
+  phone_number     String        @db.VarChar(20)
+  call_type        String?       @default("outbound") @db.VarChar(20)
+  call_result_id   Int?
+  duration         Int?          @default(0)
+  recording_url    String?
+  notes            String?
+  started_at       DateTime      @db.Timestamp(6)
+  ended_at         DateTime?     @db.Timestamp(6)
+  created_at       DateTime?     @default(now()) @db.Timestamp(6)
+  users            users         @relation(fields: [agent_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  call_results     call_results? @relation(fields: [call_result_id], references: [id], onUpdate: NoAction)
+  lead_campaign    lead_campaign @relation(fields: [lead_campaign_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([agent_id], map: "idx_calls_agent")
+  @@index([lead_campaign_id], map: "idx_calls_lead_campaign")
+  @@index([started_at], map: "idx_calls_started_at")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model campaign_phone_config {
+  id           Int       @id @default(autoincrement())
+  campaign_id  Int       @unique
+  did          String?   @db.VarChar(20)
+  wait_time    Int?      @default(30)
+  drop_rate    Decimal?  @default(0.0) @db.Decimal(5, 2)
+  dialing_mode String?   @default("manual") @db.VarChar(20)
+  max_attempts Int?      @default(5)
+  created_at   DateTime? @default(now()) @db.Timestamp(6)
+  updated_at   DateTime? @default(now()) @db.Timestamp(6)
+  campaigns    campaigns @relation(fields: [campaign_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([campaign_id], map: "idx_campaign_phone_config_campaign")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model campaign_users {
+  id            Int       @id @default(autoincrement())
+  campaign_id   Int
+  user_id       Int
+  campaign_role String    @db.VarChar(20)
+  assigned_at   DateTime? @default(now()) @db.Timestamp(6)
+  campaigns     campaigns @relation(fields: [campaign_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users         users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([campaign_id, user_id, campaign_role])
+  @@index([campaign_id], map: "idx_campaign_users_campaign")
+  @@index([user_id], map: "idx_campaign_users_user")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model campaigns {
+  id                    Int                    @id @default(autoincrement())
+  company_id            Int
+  name                  String                 @db.VarChar(200)
+  description           String?
+  type                  String?                @db.VarChar(50)
+  start_date            DateTime               @db.Date
+  end_date              DateTime?              @db.Date
+  target_sales          Int?                   @default(0)
+  status                String?                @default("active") @db.VarChar(20)
+  created_by            Int?
+  created_at            DateTime?              @default(now()) @db.Timestamp(6)
+  updated_at            DateTime?              @default(now()) @db.Timestamp(6)
+  campaign_phone_config campaign_phone_config?
+  campaign_users        campaign_users[]
+  companies             companies              @relation(fields: [company_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users                 users?                 @relation(fields: [created_by], references: [id], onUpdate: NoAction)
+  field_blocks          field_blocks[]
+  fields                fields[]
+  lead_campaign         lead_campaign[]
+  lead_lists            lead_lists[]
+  result_types          result_types[]
+  status_tabs           status_tabs[]
+  statuses              statuses[]
+
+  @@index([company_id], map: "idx_campaigns_company")
+  @@index([status], map: "idx_campaigns_status")
+}
+
+model categories {
+  id               Int          @id @default(autoincrement())
+  company_id       Int
+  name             String       @db.VarChar(100)
+  description      String?
+  parent_id        Int?
+  display_order    Int?         @default(0)
+  active           Boolean?     @default(true)
+  created_at       DateTime?    @default(now()) @db.Timestamp(6)
+  companies        companies    @relation(fields: [company_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  categories       categories?  @relation("categoriesTocategories", fields: [parent_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  other_categories categories[] @relation("categoriesTocategories")
+  products         products[]
+
+  @@unique([company_id, name])
+  @@index([company_id], map: "idx_categories_company")
+  @@index([parent_id], map: "idx_categories_parent")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model chat_participants {
+  id           Int       @id @default(autoincrement())
+  chat_id      Int
+  user_id      Int
+  role         String?   @default("member") @db.VarChar(20)
+  joined_at    DateTime? @default(now()) @db.Timestamp(6)
+  last_read_at DateTime? @db.Timestamp(6)
+  chats        chats     @relation(fields: [chat_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users        users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([chat_id, user_id])
+  @@index([chat_id], map: "idx_chat_participants_chat")
+  @@index([user_id], map: "idx_chat_participants_user")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model chats {
+  id                Int                 @id @default(autoincrement())
+  company_id        Int
+  name              String?             @db.VarChar(200)
+  type              String?             @default("private") @db.VarChar(20)
+  created_by        Int?
+  created_at        DateTime?           @default(now()) @db.Timestamp(6)
+  updated_at        DateTime?           @default(now()) @db.Timestamp(6)
+  chat_participants chat_participants[]
+  companies         companies           @relation(fields: [company_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users             users?              @relation(fields: [created_by], references: [id], onUpdate: NoAction)
+  messages          messages[]
+
+  @@index([company_id], map: "idx_chats_company")
+  @@index([type], map: "idx_chats_type")
+}
+
+model column_mappings {
+  id               Int        @id @default(autoincrement())
+  lead_list_id     Int
+  phone_column     String     @db.VarChar(10)
+  mapped_columns   Json
+  original_headers Json?
+  created_at       DateTime?  @default(now()) @db.Timestamp(6)
+  lead_lists       lead_lists @relation(fields: [lead_list_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([lead_list_id], map: "idx_column_mappings_list")
+}
+
+model field_blocks {
+  id                   Int       @id @default(autoincrement())
+  campaign_id          Int
+  name                 String    @db.VarChar(100)
+  description          String?
+  display_order        Int?      @default(0)
+  collapsible          Boolean?  @default(true)
+  collapsed_by_default Boolean?  @default(false)
+  created_at           DateTime? @default(now()) @db.Timestamp(6)
+  campaigns            campaigns @relation(fields: [campaign_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  fields               fields[]
+
+  @@index([campaign_id], map: "idx_field_blocks_campaign")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model fields {
+  id                Int                 @id @default(autoincrement())
+  campaign_id       Int
+  block_id          Int?
+  name              String              @db.VarChar(100)
+  label             String              @db.VarChar(200)
+  field_type        String              @db.VarChar(20)
+  options           Json?
+  default_value     String?
+  placeholder       String?             @db.VarChar(255)
+  help_text         String?
+  required          Boolean?            @default(false)
+  display_order     Int?                @default(0)
+  validation_rules  Json?
+  created_at        DateTime?           @default(now()) @db.Timestamp(6)
+  field_blocks      field_blocks?       @relation(fields: [block_id], references: [id], onUpdate: NoAction)
+  campaigns         campaigns           @relation(fields: [campaign_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  lead_field_values lead_field_values[]
+  sale_field_values sale_field_values[]
+
+  @@unique([campaign_id, name])
+  @@index([block_id], map: "idx_fields_block")
+  @@index([campaign_id], map: "idx_fields_campaign")
+}
+
+model lead_campaign {
+  id                  Int                   @id @default(autoincrement())
+  lead_id             Int
+  campaign_id         Int
+  status_id           Int?
+  assigned_agent      Int?
+  attempts            Int?                  @default(0)
+  last_call_at        DateTime?             @db.Timestamp(6)
+  next_call_at        DateTime?             @db.Timestamp(6)
+  assigned_at         DateTime?             @default(now()) @db.Timestamp(6)
+  updated_at          DateTime?             @default(now()) @db.Timestamp(6)
+  calls               calls[]
+  users               users?                @relation(fields: [assigned_agent], references: [id], onUpdate: NoAction)
+  campaigns           campaigns             @relation(fields: [campaign_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  leads               leads                 @relation(fields: [lead_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  statuses            statuses?             @relation(fields: [status_id], references: [id], onUpdate: NoAction)
+  lead_field_values   lead_field_values[]
+  lead_status_history lead_status_history[]
+  sales               sales[]
+
+  @@unique([lead_id, campaign_id])
+  @@index([assigned_agent], map: "idx_lead_campaign_agent")
+  @@index([campaign_id], map: "idx_lead_campaign_campaign")
+  @@index([lead_id], map: "idx_lead_campaign_lead")
+  @@index([next_call_at], map: "idx_lead_campaign_next_call")
+  @@index([status_id], map: "idx_lead_campaign_status")
+}
+
+model lead_field_values {
+  id               Int           @id @default(autoincrement())
+  lead_campaign_id Int
+  field_id         Int
+  value            String?
+  created_at       DateTime?     @default(now()) @db.Timestamp(6)
+  updated_at       DateTime?     @default(now()) @db.Timestamp(6)
+  fields           fields        @relation(fields: [field_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  lead_campaign    lead_campaign @relation(fields: [lead_campaign_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([lead_campaign_id, field_id])
+  @@index([field_id], map: "idx_lead_field_values_field")
+  @@index([lead_campaign_id], map: "idx_lead_field_values_lead_campaign")
+}
+
+model lead_list {
+  id         Int        @id @default(autoincrement())
+  lead_id    Int
+  list_id    Int
+  added_at   DateTime?  @default(now()) @db.Timestamp(6)
+  leads      leads      @relation(fields: [lead_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  lead_lists lead_lists @relation(fields: [list_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([lead_id, list_id])
+  @@index([lead_id], map: "idx_lead_list_lead")
+  @@index([list_id], map: "idx_lead_list_list")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model lead_lists {
+  id               Int               @id @default(autoincrement())
+  company_id       Int
+  campaign_id      Int?
+  name             String            @db.VarChar(200)
+  description      String?
+  file_name        String?           @db.VarChar(255)
+  file_type        String?           @db.VarChar(10)
+  total_records    Int?              @default(0)
+  imported_records Int?              @default(0)
+  failed_records   Int?              @default(0)
+  status           String?           @default("pending") @db.VarChar(20)
+  imported_by      Int?
+  imported_at      DateTime?         @default(now()) @db.Timestamp(6)
+  metadata         Json?
+  column_mappings  column_mappings[]
+  lead_list        lead_list[]
+  campaigns        campaigns?        @relation(fields: [campaign_id], references: [id], onUpdate: NoAction)
+  companies        companies         @relation(fields: [company_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users            users?            @relation(fields: [imported_by], references: [id], onUpdate: NoAction)
+
+  @@index([campaign_id], map: "idx_lead_lists_campaign")
+  @@index([company_id], map: "idx_lead_lists_company")
+  @@index([status], map: "idx_lead_lists_status")
+}
+
+model lead_status_history {
+  id                                                        Int           @id @default(autoincrement())
+  lead_campaign_id                                          Int
+  previous_status_id                                        Int?
+  new_status_id                                             Int
+  changed_by                                                Int?
+  notes                                                     String?
+  changed_at                                                DateTime?     @default(now()) @db.Timestamp(6)
+  users                                                     users?        @relation(fields: [changed_by], references: [id], onUpdate: NoAction)
+  lead_campaign                                             lead_campaign @relation(fields: [lead_campaign_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  statuses_lead_status_history_new_status_idTostatuses      statuses      @relation("lead_status_history_new_status_idTostatuses", fields: [new_status_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  statuses_lead_status_history_previous_status_idTostatuses statuses?     @relation("lead_status_history_previous_status_idTostatuses", fields: [previous_status_id], references: [id], onUpdate: NoAction)
+
+  @@index([lead_campaign_id], map: "idx_lead_status_history_lead_campaign")
+  @@index([new_status_id], map: "idx_lead_status_history_status")
+}
+
+model leads {
+  id            Int             @id @default(autoincrement())
+  company_id    Int
+  phone         String          @db.VarChar(20)
+  name          String?         @db.VarChar(255)
+  email         String?         @db.VarChar(255)
+  dni           String?         @db.VarChar(20)
+  address       String?
+  city          String?         @db.VarChar(100)
+  state         String?         @db.VarChar(100)
+  country       String?         @default("ES") @db.VarChar(100)
+  notes         String?
+  metadata      Json?
+  created_at    DateTime?       @default(now()) @db.Timestamp(6)
+  updated_at    DateTime?       @default(now()) @db.Timestamp(6)
+  lead_campaign lead_campaign[]
+  lead_list     lead_list[]
+  companies     companies       @relation(fields: [company_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([company_id], map: "idx_leads_company")
+  @@index([dni], map: "idx_leads_dni")
+  @@index([email], map: "idx_leads_email")
+  @@index([phone], map: "idx_leads_phone")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model message_files {
+  id         Int       @id @default(autoincrement())
+  message_id Int
+  file_type  String?   @db.VarChar(20)
+  file_url   String    @db.VarChar(500)
+  file_name  String    @db.VarChar(255)
+  file_size  Int?
+  created_at DateTime? @default(now()) @db.Timestamp(6)
+  messages   messages  @relation(fields: [message_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([message_id], map: "idx_message_files_message")
+}
+
+model message_reactions {
+  id         Int       @id @default(autoincrement())
+  message_id Int
+  user_id    Int
+  emoji      String    @db.VarChar(15)
+  created_at DateTime? @default(now()) @db.Timestamp(6)
+  messages   messages  @relation(fields: [message_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users      users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([message_id, user_id, emoji])
+  @@index([message_id], map: "idx_message_reactions_message")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model messages {
+  id                Int                 @id @default(autoincrement())
+  chat_id           Int
+  user_id           Int
+  content           String?
+  type              String?             @default("text") @db.VarChar(20)
+  edited            Boolean?            @default(false)
+  deleted           Boolean?            @default(false)
+  created_at        DateTime?           @default(now()) @db.Timestamp(6)
+  updated_at        DateTime?           @default(now()) @db.Timestamp(6)
+  message_files     message_files[]
+  message_reactions message_reactions[]
+  chats             chats               @relation(fields: [chat_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users             users               @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([chat_id], map: "idx_messages_chat")
+  @@index([created_at], map: "idx_messages_created")
+  @@index([user_id], map: "idx_messages_user")
+}
+
+model phone_config {
+  id                    Int       @id @default(autoincrement())
+  company_id            Int       @unique
+  sip_trunk             String?   @db.VarChar(255)
+  recording_server_ip   String?   @db.VarChar(45)
+  recording_server_port Int?      @default(5060)
+  typification_timeout  Int?      @default(30)
+  default_prefix        String?   @default("34") @db.VarChar(10)
+  created_at            DateTime? @default(now()) @db.Timestamp(6)
+  updated_at            DateTime? @default(now()) @db.Timestamp(6)
+  companies             companies @relation(fields: [company_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([company_id], map: "idx_phone_config_company")
+}
+
+model products {
+  id                Int         @id @default(autoincrement())
+  company_id        Int
+  category_id       Int?
+  code              String?     @db.VarChar(50)
+  name              String      @db.VarChar(200)
+  description       String?
+  price             Decimal     @default(0.00) @db.Decimal(10, 2)
+  commitment_months Int
+  active            Boolean?    @default(true)
+  metadata          Json?
+  created_at        DateTime?   @default(now()) @db.Timestamp(6)
+  updated_at        DateTime?   @default(now()) @db.Timestamp(6)
+  categories        categories? @relation(fields: [category_id], references: [id], onUpdate: NoAction)
+  companies         companies   @relation(fields: [company_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  sales             sales[]
+
+  @@unique([company_id, code])
+  @@index([category_id], map: "idx_products_category")
+  @@index([code], map: "idx_products_code")
+  @@index([company_id], map: "idx_products_company")
+}
+
+model result_types {
+  id           Int            @id @default(autoincrement())
+  campaign_id  Int
+  name         String         @db.VarChar(100)
+  description  String?
+  color        String?        @default("#6b7280") @db.VarChar(7)
+  created_at   DateTime?      @default(now()) @db.Timestamp(6)
+  call_results call_results[]
+  campaigns    campaigns      @relation(fields: [campaign_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([campaign_id, name])
+  @@index([campaign_id], map: "idx_result_types_campaign")
+}
+
+model sale_field_values {
+  id         Int       @id @default(autoincrement())
+  sale_id    Int
+  field_id   Int
+  value      String?
+  created_at DateTime? @default(now()) @db.Timestamp(6)
+  updated_at DateTime? @default(now()) @db.Timestamp(6)
+  fields     fields    @relation(fields: [field_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  sales      sales     @relation(fields: [sale_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([sale_id, field_id])
+  @@index([field_id], map: "idx_sale_field_values_field")
+  @@index([sale_id], map: "idx_sale_field_values_sale")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model sales {
+  id                Int                 @id @default(autoincrement())
+  lead_campaign_id  Int
+  agent_id          Int
+  product_id        Int?
+  amount            Decimal             @default(0.00) @db.Decimal(10, 2)
+  status            String?             @default("pending") @db.VarChar(20)
+  sale_date         DateTime            @db.Date
+  activation_date   DateTime?           @db.Date
+  notes             String?
+  created_at        DateTime?           @default(now()) @db.Timestamp(6)
+  updated_at        DateTime?           @default(now()) @db.Timestamp(6)
+  sale_field_values sale_field_values[]
+  users             users               @relation(fields: [agent_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  lead_campaign     lead_campaign       @relation(fields: [lead_campaign_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  products          products?           @relation(fields: [product_id], references: [id], onUpdate: NoAction)
+
+  @@index([agent_id], map: "idx_sales_agent")
+  @@index([sale_date], map: "idx_sales_date")
+  @@index([lead_campaign_id], map: "idx_sales_lead_campaign")
+  @@index([product_id], map: "idx_sales_product")
+  @@index([status], map: "idx_sales_status")
+}
+
+model status_tabs {
+  id            Int        @id @default(autoincrement())
+  campaign_id   Int
+  name          String     @db.VarChar(100)
+  color         String?    @default("#3b82f6") @db.VarChar(7)
+  display_order Int?       @default(0)
+  created_at    DateTime?  @default(now()) @db.Timestamp(6)
+  campaigns     campaigns  @relation(fields: [campaign_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "status_tabs_cmapaign_id_fkey")
+  statuses      statuses[]
+
+  @@index([campaign_id], map: "idx_status_tabs_campaign")
+}
+
+model statuses {
+  id                                                                   Int                   @id @default(autoincrement())
+  campaign_id                                                          Int
+  status_tab_id                                                        Int?
+  name                                                                 String                @db.VarChar(100)
+  description                                                          String?
+  color                                                                String?               @default("#3b82f6") @db.VarChar(7)
+  is_final                                                             Boolean?              @default(false)
+  is_global                                                            Boolean?              @default(false)
+  display_order                                                        Int?                  @default(0)
+  created_at                                                           DateTime?             @default(now()) @db.Timestamp(6)
+  lead_campaign                                                        lead_campaign[]
+  lead_status_history_lead_status_history_new_status_idTostatuses      lead_status_history[] @relation("lead_status_history_new_status_idTostatuses")
+  lead_status_history_lead_status_history_previous_status_idTostatuses lead_status_history[] @relation("lead_status_history_previous_status_idTostatuses")
+  campaigns                                                            campaigns             @relation(fields: [campaign_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  status_tabs                                                          status_tabs?          @relation(fields: [status_tab_id], references: [id], onUpdate: NoAction)
+
+  @@unique([campaign_id, name])
+  @@index([campaign_id], map: "idx_statuses_campaign")
+  @@index([status_tab_id], map: "idx_statuses_tab")
 }

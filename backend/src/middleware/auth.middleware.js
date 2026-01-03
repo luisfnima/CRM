@@ -16,6 +16,8 @@ export const authenticate = async (req, res, next) => {
     const token = authHeader.substring(7);
     const decoded = verifyToken(token);
 
+    console.log('🔑 Token decoded:', decoded); // ← AGREGAR
+
     if (!decoded) {
       return res.status(401).json({ error: 'Invalid token or expired token' });
     }
@@ -28,16 +30,23 @@ export const authenticate = async (req, res, next) => {
       },
     });
 
+    console.log('👤 User found:', user ? user.id : 'NOT FOUND'); // ← AGREGAR
+
     if (!user || user.status !== 'active') {
       return res.status(401).json({ error: 'User not found or inactive' });
     }
+
     // Agregar info del usuario al request
     req.user = {
       ...decoded,
       role: user.role?.name || 'user',
     };
+
+    console.log('✅ req.user:', req.user); // ← AGREGAR
+    
     next();
   } catch (error) {
+    console.error('❌ Auth error:', error); // ← AGREGAR
     return res.status(401).json({ error: 'Authentication failed' });
   }
 };
