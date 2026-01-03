@@ -416,12 +416,23 @@ export const deleteUser = async (req, res) => {
 export const toggleUserStatus = async (req, res) => {
   try {
     const userId = parseInt(req.params.id, 10);
+    const currentUserId = req.user?.userId; // ⬅️ Usuario que está haciendo la acción
+
 
     if (isNaN(userId)) {
       return res.status(400).json({
         error: 'Invalid user ID',
       });
     }
+
+
+    // ⬇️ NUEVA VALIDACIÓN: No puede desactivarse a sí mismo
+    if (userId === currentUserId) {
+      return res.status(400).json({
+        error: 'No puedes cambiar tu propio estado',
+      });
+    }
+
 
     const user = await prisma.users.findUnique({
       where: { id: userId },

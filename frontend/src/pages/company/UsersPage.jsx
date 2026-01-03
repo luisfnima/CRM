@@ -22,6 +22,8 @@ const UserModal = ({ isOpen, onClose, onSave, editingUser, availableRoles, avail
         photo_url: '',
     });
 
+
+
     const [generatedEmail, setGeneratedEmail] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [uploadingImage, setUploadingImage] = useState(false);
@@ -31,6 +33,7 @@ const UserModal = ({ isOpen, onClose, onSave, editingUser, availableRoles, avail
     useEffect(() => {
         if (editingUser) {
             const nameParts = editingUser.name?.split(' ') || ['', ''];
+
             setFormData({
                 firstName: nameParts[0] || '',
                 lastName: nameParts.slice(1).join(' ') || '',
@@ -508,13 +511,18 @@ const UsersPage = () => {
     const [modalOpen, setModalOpen] = useState(false);
     const [editingUser, setEditingUser] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [currentUser, setCurrentUser] = useState(null); // ⬅️ AGREGAR AQUÍ
 
     const [users, setUsers] = useState([]);
     const [availableRoles, setAvailableRoles] = useState([]);
     const [availableSchedules, setAvailableSchedules] = useState([]);
     const [availableBranches, setAvailableBranches] = useState([]);
 
+
     useEffect(() => {
+        // ⬇️ CARGAR USUARIO ACTUAL
+        const user = JSON.parse(localStorage.getItem('user'));
+        setCurrentUser(user);
         loadData();
     }, []);
 
@@ -834,6 +842,7 @@ const UsersPage = () => {
                                         <td className="px-6 py-4">
                                             <button
                                                 onClick={() => toggleStatus(user.id)}
+                                                disabled={user.id === currentUser?.id}
                                                 className={`inline-flex items-center px-3 py-1.5 text-xs font-bold shadow-sm transition-all rounded ${
                                                     user.status === 'active'
                                                         ? 'bg-emerald-100 text-emerald-700 border border-emerald-200 hover:bg-emerald-200'
