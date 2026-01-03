@@ -15,6 +15,7 @@ import roleRoutes from './routes/roles.routes.js';
 import scheduleRoutes from './routes/schedules.routes.js';
 import companiesRoutes from './routes/companies.routes.js';
 import statusesRoutes from './routes/statuses.routes.js';
+import fieldsRoutes from './routes/fields.routes.js';
 
 dotenv.config();
 
@@ -48,6 +49,7 @@ app.use('/api/lead-campaign', leadCampaignRoutes);
 app.use('/api/companies', companiesRoutes);
 app.use('/api/statuses', statusesRoutes);
 app.use('/api/branches', branchRoutes);
+app.use('/api/fields', fieldsRoutes);
 
 app.get('/api/health', (req, res) => {
     res.json({status: 'ok', message: 'CRM API is running'});
